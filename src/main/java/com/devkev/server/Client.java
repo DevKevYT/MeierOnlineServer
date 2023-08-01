@@ -1,6 +1,6 @@
 package com.devkev.server;
 
-import java.net.Socket;
+import org.jooby.Sse;
 
 import com.devkev.models.ClientModel;
 
@@ -8,18 +8,15 @@ import com.devkev.models.ClientModel;
 public class Client {
 
 	public ClientModel model;
+	
+	//Live data.
 	public String sessionID;
 	public int matchID;
+	public Sse emitter; //The emitter associated with the current session ID
+	public int lastEventID; //This value should be in sync with the server, otherwise send missing events using the dispatcher in the match
 	
 	public Client(ClientModel model) {
 		this.model = model;
 	}
 	
-	public void connect(Socket socket) {
-		
-	}
-	
-	public void sync() {
-		
-	}
 }

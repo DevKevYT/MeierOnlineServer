@@ -8,21 +8,25 @@ import java.util.concurrent.TimeUnit;
 
 import org.jooby.Jooby;
 import org.jooby.Sse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.devkev.database.DBConnection;
 import com.devkev.models.CreateMatchResponse;
+import com.devkev.server.Response.ResponseCodes;
 
 public class API extends Jooby {
 	
-	ScheduledExecutorService heartbeat = Executors.newScheduledThreadPool(1);
+	//ScheduledExecutorService heartbeat = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
 	private ArrayList<Client> onlineClients = new ArrayList<>();
 	private DBConnection dbSupplier;
 	
+	private final Logger logger = LoggerFactory.getLogger(API.class);
+	
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
-		
 	}
 	
 	public Client getClientBySession(String sessionID) {
@@ -106,10 +110,11 @@ public class API extends Jooby {
 				
 				rsp.send(new Response(res));
 			} else {
-				rsp.send(new ErrorResponse("", 1, "Client has already created a match. Please leave before creating a new one"));
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Client has already created a match. Please leave before creating a new one"));
 			}
 		});
 		
+		//TODO Error codes!!
 		post("/api/match/join/{matchID}", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -127,8 +132,10 @@ public class API extends Jooby {
 				
 				if(match != null) {
 					match.join(client);
-				}
-			}
+					
+				} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
+			
+			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist"));
 		});
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
@@ -136,8 +143,10 @@ public class API extends Jooby {
 		sse("/heartbeat/{sessionID}", (ctx, sse) -> {
 			String session = ctx.param("sessionID").value();
 			
+			Client c = getClientBySession(session);
+			
 			//If the request has no valid session id associated, just drop the connection
-			if(getClientBySession(session) == null) {
+			if(c == null) {
 				sse.close();
 				return;
 			}
@@ -150,19 +159,13 @@ public class API extends Jooby {
 				return;
 			}
 			
-			int lastId = joined.getMostrecentEventID();
-			
-			//Send an event, if the queue for this match is not empty
-			ScheduledFuture<?> future = heartbeat.scheduleAtFixedRate(() -> {
-				
-				sse.event("Hello World").id(lastId).send();
-			
-			}, 0, 1, TimeUnit.SECONDS);
-			
-			//Cancel the heartbeat for this client if the connection is lost
 			sse.onClose(() -> {
-				future.cancel(true);
+				logger.debug("Connection terminated");
+				c.sessionID = null;
+				c.emitter = null;
 			});
+			
+			c.emitter = sse;
 		});
 	}
 }

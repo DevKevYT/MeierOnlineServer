@@ -48,9 +48,25 @@ public class Match {
 	}
 	
 	public void join(Client client) {
-		eventID++;
 		JoinEvent event = new JoinEvent(eventID);
+		
+		event.clientID = client.model.uuid;
+		event.displayName = client.model.displayName;
+		
+		triggerEvent(event);
+	}
+	
+	private int triggerEvent(MatchEvent event) {
 		eventQueue.add(event);
+		eventID++;
+		
+		for(Client c : members) {
+			if(c.emitter != null) {
+				c.emitter.event(event).id(eventID).send();
+			}
+		}
+		
+		return eventID;
 	}
 	
 	private static String createUniqueID() {
