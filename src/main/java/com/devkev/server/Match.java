@@ -3,6 +3,9 @@ package com.devkev.server;
 import java.util.ArrayList;
 import java.util.Random;
 
+import com.devkev.models.MatchEvents.JoinEvent;
+import com.devkev.models.MatchEvents.MatchEvent;
+
 //This class handles match logic for all connected clients
 public class Match {
 	
@@ -17,7 +20,9 @@ public class Match {
 	private Client host;
 	
 	//Here goes the event queue. Everything that happens in this queue is being sent when syncing clients in this match using sse
-	
+	//Every event has an ID and every event is saved until a match completes (TODO)
+	int eventID = 0;
+	ArrayList<MatchEvent> eventQueue = new ArrayList<MatchEvent>();
 	
 	private Match() {
 		matchID = createUniqueID();
@@ -30,6 +35,10 @@ public class Match {
 		return m;
 	}
 	
+	public int getMostrecentEventID() {
+		return eventID;
+	}
+	
 	public Client getHost() {
 		return host;
 	}
@@ -38,12 +47,10 @@ public class Match {
 		return members;
 	}
 	
-	public static void deleteMatch() {
-		
-	}
-	
-	public void addMember(Client client) {
-		
+	public void join(Client client) {
+		eventID++;
+		JoinEvent event = new JoinEvent(eventID);
+		eventQueue.add(event);
 	}
 	
 	private static String createUniqueID() {

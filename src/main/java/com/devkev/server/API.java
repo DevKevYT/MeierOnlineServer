@@ -53,6 +53,14 @@ public class API extends Jooby {
 		return null;
 	}
 	
+	public Match getMatchByID(String matchID) {
+		for(Match m : Match.MATCHES) {
+			if(m.matchID.equals(matchID))
+				return m;
+		}
+		return null;
+	}
+	
 	{
 		post("/api/createguest/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
@@ -111,6 +119,16 @@ public class API extends Jooby {
 			
 			String clientID = ctx.param("clientID").value();
 			String matchID = ctx.param("matchID").value();
+			
+			Client client = getClientByUUID(clientID);
+			if(client != null) {
+				
+				Match match = getMatchByID(matchID);
+				
+				if(match != null) {
+					match.join(client);
+				}
+			}
 		});
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
@@ -132,13 +150,14 @@ public class API extends Jooby {
 				return;
 			}
 			
-			int lastId = sse.lastEventId(Integer.class).orElse(0);
+			int lastId = joined.getMostrecentEventID();
 			
 			//Send an event, if the queue for this match is not empty
 			ScheduledFuture<?> future = heartbeat.scheduleAtFixedRate(() -> {
 				
 				sse.event("Hello World").id(lastId).send();
-				
+				lastId++;
+			
 			}, 0, 1, TimeUnit.SECONDS);
 			
 			//Cancel the heartbeat for this client if the connection is lost
