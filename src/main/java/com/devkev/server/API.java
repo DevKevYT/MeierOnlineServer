@@ -156,7 +156,6 @@ public class API extends Jooby {
 			ScheduledFuture<?> future = heartbeat.scheduleAtFixedRate(() -> {
 				
 				sse.event("Hello World").id(lastId).send();
-				lastId++;
 			
 			}, 0, 1, TimeUnit.SECONDS);
 			
