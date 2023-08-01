@@ -1,17 +1,20 @@
 package com.devkev.server;
 
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.jooby.Jooby;
-import org.jooby.Session;
+import org.jooby.Sse;
 
 import com.devkev.database.DBConnection;
 import com.devkev.models.CreateMatchResponse;
-import com.devkev.server.Client;
 
 public class API extends Jooby {
 	
-	private Thread heartbeat;
+	ScheduledExecutorService heartbeat = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
 	private ArrayList<Client> onlineClients = new ArrayList<>();
@@ -20,13 +23,6 @@ public class API extends Jooby {
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
 		
-		//TODO ausfallsicher machen
-		heartbeat = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				
-			}
-		});
 	}
 	
 	public Client getClientBySession(String sessionID) {
@@ -120,7 +116,6 @@ public class API extends Jooby {
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
 		//A client needs to hit this URL with his associated session ID. If the client is in a match, the sync data is being sent every second
 		sse("/heartbeat/{sessionID}", (ctx, sse) -> {
-			
 			String session = ctx.param("sessionID").value();
 			
 			//If the request has no valid session id associated, just drop the connection
@@ -130,14 +125,26 @@ public class API extends Jooby {
 			}
 			
 			Match joined = getMatchBySessionID(session);
+			
 			//Find the match the client is joined. If there is no match, also drop the connection
-			System.out.println(joined);
 			if(joined == null) {
 				sse.close();
 				return;
 			}
-			//This is where the sync data goes!
-			sse.send(joined.matchID);
+			
+			int lastId = sse.lastEventId(Integer.class).orElse(0);
+			
+			//Send an event, if the queue for this match is not empty
+			ScheduledFuture<?> future = heartbeat.scheduleAtFixedRate(() -> {
+				
+				sse.event("Hello World").id(lastId).send();
+				
+			}, 0, 1, TimeUnit.SECONDS);
+			
+			//Cancel the heartbeat for this client if the connection is lost
+			sse.onClose(() -> {
+				future.cancel(true);
+			});
 		});
 	}
 }

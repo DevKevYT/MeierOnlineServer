@@ -2,6 +2,8 @@ package com.devkev.server;
 
 import java.net.Socket;
 
+import org.jooby.Sse;
+
 import com.devkev.models.ClientModel;
 
 //This class is a "virtual" representation of the actual client and is constantly being synced with the server
