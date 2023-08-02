@@ -29,7 +29,7 @@ public class API extends Jooby {
 		this.dbSupplier = dbSupplier;
 	}
 	
-	public Client getClientBySession(String sessionID) {
+	public Client getOnlineClientBySession(String sessionID) {
 		for(Client c : onlineClients) {
 			if(c.sessionID.equals(sessionID)) {
 				return c;
@@ -38,7 +38,7 @@ public class API extends Jooby {
 		return null;
 	}
 	
-	public Client getClientByUUID(String id) {
+	public Client getOnlineClientByUUID(String id) {
 		for(Client c : onlineClients) {
 			if(c.model.uuid.equals(id)) {
 				return c;
@@ -93,7 +93,7 @@ public class API extends Jooby {
 			
 			//get the id of the user and create a session. This session is being used until the client goes offline
 			//If the user already has a session, return an error
-			if(getClientByUUID(clientID) == null) {
+			if(getOnlineClientByUUID(clientID) == null) {
 				
 				Client c = dbSupplier.getUser(clientID);
 				c.sessionID = ctx.session().id();
@@ -124,17 +124,25 @@ public class API extends Jooby {
 			String clientID = ctx.param("clientID").value();
 			String matchID = ctx.param("matchID").value();
 			
-			Client client = getClientByUUID(clientID);
-			if(client != null) {
+			System.out.println(clientID);
+			System.out.println(matchID);
+			
+			Client client = dbSupplier.getUser(clientID);
+			 
+			//If the second statement is not null, the client has already joined another match!
+			if(client != null && getOnlineClientByUUID(clientID) == null) {
 				
 				Match match = getMatchByID(matchID);
 				
 				if(match != null) {
 					match.join(client);
+					onlineClients.add(client);
+					
+					rsp.send(new Response(""));
 					
 				} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
 			
-			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist"));
+			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist or already joined another match!"));
 		});
 		
 		
@@ -143,7 +151,7 @@ public class API extends Jooby {
 		sse("/heartbeat/{sessionID}", (ctx, sse) -> {
 			String session = ctx.param("sessionID").value();
 			
-			Client c = getClientBySession(session);
+			Client c = getOnlineClientBySession(session);
 			
 			//If the request has no valid session id associated, just drop the connection
 			if(c == null) {

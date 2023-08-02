@@ -7,18 +7,57 @@
 			var clientID;
 			var sessionID;
 			var displayName;
+			var currentMatchID;
 			
-			
-			function httpGet(theUrl) {
+			function POST(theUrl, payload) {
 				var xmlHttp = new XMLHttpRequest();
-				xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-				xmlHttp.send( null );
+				xmlHttp.open( "POST", theUrl, false );
+				xmlHttp.setRequestHeader("Content-Type", "multipart/form-data;charset=UTF-8");
+				xmlHttp.send(payload);
 				return xmlHttp.responseText;
 			}
 			
 			function login() {
-				var result = httpGet("http://localhost:8080/api/createguest/");
+				var result = POST("http://localhost:8080/api/createguest/", "displayName=" + document.getElementById("name").value);
+				var json = JSON.parse(result);
+				console.log(json);
+				clientID = json.data.uuid;
+				alert("Logged as guest. Client ID: " + clientID);
+				
+				document.getElementById("gamescreen").style.display = "none";
+				document.getElementById("guest_login").style.display = "none";
+				document.getElementById("match_overview").style.display = "block";
+			}
+			
+			function createMatch() {
+				var result = JSON.parse(POST("http://localhost:8080/api/match/create/", "clientID=" + clientID));
 				console.log(result);
+				if(result.code != 0) {
+					alert("Error while creating a match: " + result.errorMessage);
+					return;
+				}
+				sessionID = result.data.sessionID;
+				currentMatchID = result.data.matchID;
+				alert("Match created! ID: " + currentMatchID + " Wait for other people to join");
+				
+				document.getElementById("gamescreen").style.display = "block";
+				document.getElementById("guest_login").style.display = "none";
+				document.getElementById("match_overview").style.display = "none";
+			}
+			
+			function joinMatch() {
+				var result = JSON.parse(POST("http://localhost:8080/api/match/join/" + document.getElementById("joinmatch").value, "clientID=" + clientID));
+				console.log(result);
+				if(result.code == 0) { 
+					
+					alert("Joined!");
+					
+					document.getElementById("gamescreen").style.display = "block";
+					document.getElementById("guest_login").style.display = "none";
+					document.getElementById("match_overview").style.display = "none";
+				} else {
+					alert(result.errorMessage);
+				}
 			}
 		</script>
 	</head>
@@ -26,8 +65,18 @@
 	<body>
 		<div id="guest_login">
 			<a>Bitte wähle einen Nicknamen:</a><br>
-			<input type="text"></input><br>
+			<input type="text" id="name"></input><br>
 			<input type="submit" onclick="login()"></input>
+		</div>
+		<div id="match_overview" style="display:none;">
+			<a>Erstelle, oder trete einem Match bei!</a><br>
+			<button onclick="createMatch()">Erstelle Match</button><br><br>
+			<a>4 stellige Match id:</a>
+			<input type="text" id="joinmatch"></input><br>
+			<button onclick="joinMatch()">Beitreten</button>
+		</div>
+		<div id="gamescreen" style="display:none">
+			<a style="width=200px;height=400px;background=#0f0f0f"></a>
 		</div>
 	</body>
 </html>
