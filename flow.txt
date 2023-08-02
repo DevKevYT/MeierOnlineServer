@@ -1,0 +1,4 @@
+Wie funktioniert das?
+
+Wenn clients sich mit einem Match verbinden, bekommen sie eine Session und events zugeschickt.
+Wenn ein Event nicht beim Client ankommt wird das notiert und erneut gesendet, bis ein neues Event passiert, ODER die Nachricht angekommen ist.

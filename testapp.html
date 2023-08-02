@@ -1,0 +1,33 @@
+<!Eine Testapp zum testen halt>
+<html>
+	<head>
+		<title>MeyerOnlineDevClient</title>
+	
+		<script type="text/javascript">
+			var clientID;
+			var sessionID;
+			var displayName;
+			
+			
+			function httpGet(theUrl) {
+				var xmlHttp = new XMLHttpRequest();
+				xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+				xmlHttp.send( null );
+				return xmlHttp.responseText;
+			}
+			
+			function login() {
+				var result = httpGet("http://localhost:8080/api/createguest/");
+				console.log(result);
+			}
+		</script>
+	</head>
+		
+	<body>
+		<div id="guest_login">
+			<a>Bitte wähle einen Nicknamen:</a><br>
+			<input type="text"></input><br>
+			<input type="submit" onclick="login()"></input>
+		</div>
+	</body>
+</html>

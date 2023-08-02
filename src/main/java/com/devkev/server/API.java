@@ -49,7 +49,6 @@ public class API extends Jooby {
 	
 	public Match getMatchBySessionID(String sessionID) {
 		for(Match m : Match.MATCHES) {
-			if(m.getHost().sessionID.equals(sessionID)) return m;
 			for(Client c : m.getMembers()) {
 				if(c.sessionID.equals(sessionID)) return m;
 			}
@@ -137,6 +136,7 @@ public class API extends Jooby {
 			
 			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist"));
 		});
+		
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
 		//A client needs to hit this URL with his associated session ID. If the client is in a match, the sync data is being sent every second

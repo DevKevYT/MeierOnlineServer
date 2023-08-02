@@ -13,7 +13,9 @@ public class Client {
 	public String sessionID;
 	public int matchID;
 	public Sse emitter; //The emitter associated with the current session ID
-	public int lastEventID; //This value should be in sync with the server, otherwise send missing events using the dispatcher in the match
+	
+	public boolean lostConnection = false;
+	public int lastEventID = 0;
 	
 	public Client(ClientModel model) {
 		this.model = model;
