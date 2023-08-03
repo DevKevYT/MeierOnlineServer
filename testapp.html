@@ -58,14 +58,6 @@
 					document.getElementById("guest_login").style.display = "none";
 					document.getElementById("match_overview").style.display = "none";
 					
-					//Now listen to events and append them to the output to make them visible. They don't need to be fancy for now on. Only functionality counts
-					
-					var eventSourceInitDict = {headers: {'Cookie': 'test=test'}};
-					var es = new EventSource("http://localhost:8080/heartbeat/" + sessionID, eventSourceInitDict);
-					es.onmessage = function (event) {
-  						document.getElementById("event-dispaly").innerHTML += "<br>" + event.data;
-					};
-					
 				} else {
 					alert(result.errorMessage);
 				}

@@ -137,9 +137,6 @@ public class API extends Jooby {
 			String clientID = ctx.param("clientID").value();
 			String matchID = ctx.param("matchID").value();
 			
-			System.out.println(clientID);
-			System.out.println(matchID);
-			
 			Client client = dbSupplier.getUser(clientID);
 			 
 			//If the second statement is not null, the client has already joined another match!
@@ -148,9 +145,11 @@ public class API extends Jooby {
 				Match match = getMatchByID(matchID);
 				
 				if(match != null) {
+					
 					match.join(client);
 					onlineClients.add(client);
 					
+					client.sessionID = ctx.session().id();
 					rsp.send(new Response(""));
 					
 				} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
