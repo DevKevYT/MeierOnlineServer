@@ -1,4 +1,4 @@
-package com.devkev.server;
+package com.devkev.models;
 
 public class ErrorResponse extends Response {
 

@@ -1,4 +1,4 @@
-package com.devkev.server;
+package com.devkev.models;
 
 import com.google.gson.Gson;
 

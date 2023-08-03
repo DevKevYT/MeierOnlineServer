@@ -7,6 +7,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.devkev.models.MatchEvents.JoinEvent;
+import com.devkev.models.MatchEvents.LeaveEvent;
 import com.devkev.models.MatchEvents.MatchEvent;
 import com.google.gson.Gson;
 
@@ -45,8 +46,12 @@ public class Match {
 		return m;
 	}
 	
+	public void deleteMatch() {
+		MATCHES.remove(this);
+	}
+	
 	public int getMostrecentEventID() {
-		return eventQueue.size()-1;
+		return eventQueue.size();
 	}
 	
 	public Client getHost() {
@@ -63,7 +68,36 @@ public class Match {
 		event.clientID = client.model.uuid;
 		event.displayName = client.model.displayName;
 		
+		members.add(client);
+		
 		triggerEvent(event);
+	}
+	
+	public void leave(Client client) throws Exception {
+		
+		for(Client m : members) {
+			if(m.model.uuid.equals(client.model.uuid)) {
+				members.remove(m);
+				break;
+			}
+		}
+		
+		client.sessionID = null;
+		client.lastEventID = 0;
+		client.emitter.close();
+		
+		System.out.println("Client " + client.model.displayName + " removed from match. " + members.size() + " left!");
+		
+		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
+		leave.clientID = client.model.uuid;
+		leave.displayName = client.model.displayName;
+		triggerEvent(leave);
+		
+		//if no members are left, just remove itself
+		if(members.size() == 0) {
+			System.out.println("No members left. Removing. " + MATCHES.size() + " matches currently running");
+			deleteMatch();
+		}
 	}
 	
 	//TODO Wenn eine Nachricht nicht ankommt, sende so lange im Sekundentakt bis:

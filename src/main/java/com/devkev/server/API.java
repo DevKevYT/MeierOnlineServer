@@ -1,19 +1,18 @@
 package com.devkev.server;
 
 import java.util.ArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.jooby.Jooby;
-import org.jooby.Sse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.devkev.database.DBConnection;
-import com.devkev.models.CreateMatchResponse;
-import com.devkev.server.Response.ResponseCodes;
+import com.devkev.models.ClientModel;
+import com.devkev.models.ErrorResponse;
+import com.devkev.models.Response;
+import com.devkev.models.Response.ResponseCodes;
+import com.devkev.models.ResponseModels.CreateMatchResponse;
+import com.devkev.models.ResponseModels.JoinMatchResponse;
 
 public class API extends Jooby {
 	
@@ -45,6 +44,15 @@ public class API extends Jooby {
 			}
 		}
 		return null;
+	}
+	
+	public void removeOnlineClient(Client client) {
+		for(Client c : onlineClients) {
+			if(c.model.uuid.equals(client.model.uuid)) {
+				onlineClients.remove(c);
+				return;
+			}
+		}
 	}
 	
 	public Match getMatchBySessionID(String sessionID) {
@@ -127,6 +135,8 @@ public class API extends Jooby {
 		});
 		
 		//TODO Error codes!!
+		/**Returns: 
+		 * { data: {matchID: [matchID], sessionID: [sessionID], joinedClients: [ { uuid: [uuid], displayName: [name], expires: [expires]} ]}, code: 0}*/
 		post("/api/match/join/{matchID}", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -150,13 +160,57 @@ public class API extends Jooby {
 					onlineClients.add(client);
 					
 					client.sessionID = ctx.session().id();
-					rsp.send(new Response(""));
+					
+					JoinMatchResponse joinResponse = new JoinMatchResponse();
+					joinResponse.matchID = match.matchID;
+					joinResponse.sessionID = client.sessionID;
+					
+					ArrayList<ClientModel> coll = new ArrayList<>();
+					for(Client c : match.getMembers()) 
+						coll.add(c.model);
+					joinResponse.joinedClients = coll.toArray(new ClientModel[coll.size()]);
+					
+					rsp.send(new Response(joinResponse));
 					
 				} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
 			
 			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist or already joined another match!"));
 		});
 		
+		post("/api/match/leave/", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "POST");
+		
+			if(!ctx.param("sessionID").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: sessionID missing"));
+				return;
+			}
+			
+			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				return;
+			}
+			
+			Match match = getMatchBySessionID(c.sessionID);
+			if(match == null) {
+				//This should not happen!
+				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
+				return;
+			}
+			
+			try {
+				match.leave(c);
+				removeOnlineClient(c);
+				rsp.send(new Response("")); //Send a generic "ok" message
+			} catch(Exception e) {
+				rsp.send(new ErrorResponse("", 100, "Error while leaving match: " + e.getMessage()));
+				e.printStackTrace();
+			}
+		});
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
 		//A client needs to hit this URL with his associated session ID. If the client is in a match, the sync data is being sent every second
@@ -180,7 +234,7 @@ public class API extends Jooby {
 			}
 			
 			sse.onClose(() -> {
-				logger.debug("Connection terminated");
+				logger.debug("Connection to user " + c.model.displayName + " terminated");
 				c.sessionID = null;
 				c.emitter = null;
 			});

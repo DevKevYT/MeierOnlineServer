@@ -22,12 +22,22 @@ public interface MatchEvents {
 	
 	public class JoinEvent extends MatchEvent {
 		
+		public String clientID;
+		public String displayName;
+		
 		public JoinEvent(int eventID) {
 			super(eventID, "match-join");
 		}
-		
-		public String clientID;
+	}
+	
+	public class LeaveEvent extends MatchEvent {
+
 		public String displayName;
+		public String clientID;
+		
+		public LeaveEvent(int eventID) {
+			super(eventID, "match-leave");
+		}
 		
 	}
 	
