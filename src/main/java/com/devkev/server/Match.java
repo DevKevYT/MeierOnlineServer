@@ -77,7 +77,7 @@ public class Match {
 			System.out.println("Sending event to " + c.model.displayName);
 			
 			if(c.emitter != null && !c.lostConnection) {
-				if(c.emitter.event(event).id(getMostrecentEventID()).send().isCompletedExceptionally()) {
+				if(c.emitter.event(event).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
 					
 					System.out.println("Failed to send event to client: " + c.model.displayName);
 					
@@ -96,7 +96,7 @@ public class Match {
 							collected.add(eventQueue.get(i));
 						}
 						
-						if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).send().isCompletedExceptionally()) {
+						if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
 							System.out.println("Client " + c.model.displayName  + " reconnected!");
 							c.lostConnection = false;
 						}

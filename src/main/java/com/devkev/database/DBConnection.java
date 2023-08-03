@@ -39,7 +39,7 @@ public class DBConnection {
 			logger.error("Failed to establish a MySQL connection to " + configuration.dbAddress + " using port " + configuration.dbPort 
 					+ ". Please ensure you have a MySQL server up and running on the desired address and port.\nAlso check the given credentials may cause a failing login.\n"
 					+ "SQL State: " + exception.getSQLState());
-			return;
+			throw exception;
 		}
 		
 		logger.debug("Database connection established");

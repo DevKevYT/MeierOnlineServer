@@ -7,9 +7,11 @@ public interface MatchEvents {
 	public abstract class MatchEvent {
 		
 		public final int EVENT_ID;
+		public final String eventName;
 		
-		public MatchEvent(int eventID) {
+		public MatchEvent(int eventID, String eventName) {
 			this.EVENT_ID = eventID;
+			this.eventName = eventName;
 		}
 		
 		public String toString() {
@@ -21,7 +23,7 @@ public interface MatchEvents {
 	public class JoinEvent extends MatchEvent {
 		
 		public JoinEvent(int eventID) {
-			super(eventID);
+			super(eventID, "match-join");
 		}
 		
 		public String clientID;

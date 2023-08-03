@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>MeyerOnlineDevClient</title>
-	
+		
 		<script type="text/javascript">
 			var clientID;
 			var sessionID;
@@ -43,6 +43,8 @@
 				document.getElementById("gamescreen").style.display = "block";
 				document.getElementById("guest_login").style.display = "none";
 				document.getElementById("match_overview").style.display = "none";
+				
+				document.getElementById("match-id").innerHTML = "Match ID: " + currentMatchID;
 			}
 			
 			function joinMatch() {
@@ -55,10 +57,20 @@
 					document.getElementById("gamescreen").style.display = "block";
 					document.getElementById("guest_login").style.display = "none";
 					document.getElementById("match_overview").style.display = "none";
+					
+					//Now listen to events and append them to the output to make them visible. They don't need to be fancy for now on. Only functionality counts
+					
+					var eventSourceInitDict = {headers: {'Cookie': 'test=test'}};
+					var es = new EventSource("http://localhost:8080/heartbeat/" + sessionID, eventSourceInitDict);
+					es.onmessage = function (event) {
+  						document.getElementById("event-dispaly").innerHTML += "<br>" + event.data;
+					};
+					
 				} else {
 					alert(result.errorMessage);
 				}
 			}
+			
 		</script>
 	</head>
 		
@@ -76,7 +88,8 @@
 			<button onclick="joinMatch()">Beitreten</button>
 		</div>
 		<div id="gamescreen" style="display:none">
-			<a style="width=200px;height=400px;background=#0f0f0f"></a>
+			<a id="match-id"></a><br>
+			<a style="width=200px;height=400px;background=#0f0f0f" id="event-display"></a>
 		</div>
 	</body>
 </html>

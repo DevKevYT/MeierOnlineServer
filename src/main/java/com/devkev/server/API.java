@@ -72,8 +72,15 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Origin", "*");
 			rsp.header("Access-Control-Allow-Methods", "POST");
 			
+			if(!ctx.param("displayName").isSet()) {
+				System.out.println("Body: " + ctx.body().value());
+				rsp.send(new ErrorResponse("", 100, "Required parameter: displayName missing"));
+				return;
+			}
+			
 			String displayName = ctx.param("displayName").value();
 			Client client = dbSupplier.createGuestUser(displayName);
+			
 			
 			rsp.send(new Response(client.model));
 		});
@@ -96,6 +103,12 @@ public class API extends Jooby {
 			if(getOnlineClientByUUID(clientID) == null) {
 				
 				Client c = dbSupplier.getUser(clientID);
+				
+				if(c == null) {
+					rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Unknown clientID: " + clientID));
+					return;
+				}
+				
 				c.sessionID = ctx.session().id();
 				
 				Match m = Match.createMatch(c);
