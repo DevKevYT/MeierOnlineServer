@@ -177,6 +177,7 @@ public class API extends Jooby {
 			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist or already joined another match!"));
 		});
 		
+		//Requires the session id of the joined user. If the user is the host, a random other client is chosen and notified via event
 		post("/api/match/leave/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -196,8 +197,7 @@ public class API extends Jooby {
 			}
 			
 			Match match = getMatchBySessionID(c.sessionID);
-			if(match == null) {
-				//This should not happen!
+			if(match == null) { //This should not happen!
 				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
 				return;
 			}
@@ -210,6 +210,45 @@ public class API extends Jooby {
 				rsp.send(new ErrorResponse("", 100, "Error while leaving match: " + e.getMessage()));
 				e.printStackTrace();
 			}
+		});
+		
+		//Requires: sessionID of the host
+		post("/api/match/start/", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "POST");
+			
+			if(!ctx.param("sessionID").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: sessionID missing"));
+				return;
+			}
+			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				return;
+			}
+			Match match = getMatchBySessionID(c.sessionID);
+			if(match == null) { //This should not happen!
+				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
+				return;
+			}
+			if(match.isStarted()) {
+				rsp.send(new ErrorResponse("", 100, "The match has already started!"));
+				return;
+			}
+			if(!c.model.uuid.equals(match.getHost().model.uuid)) {
+				rsp.send(new ErrorResponse("", 100, "Only the match host is allowed to start or pause the round"));
+				return;
+			}
+			//Start the match and tell eneryone who's turn it is. However people can still join and leave
+			if(match.getMembers().size() <= 1) {
+				rsp.send(new ErrorResponse("", 100, "Starting the match alone is a bit boring, isn't it? Wait for your friends to join first"));
+				return;
+			}
+			match.start();
+			rsp.send(new Response("")); //Just send a generic success response
 		});
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
