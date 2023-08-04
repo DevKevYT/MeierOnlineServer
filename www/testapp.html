@@ -51,6 +51,14 @@
 				var result = JSON.parse(POST("http://localhost:8080/api/match/join/" + document.getElementById("joinmatch").value, "clientID=" + clientID));
 				console.log(result);
 				if(result.code == 0) { 
+				
+					sessionID = result.data.sessionID;
+					
+					let eventSource = new EventSource("http://localhost:8080/heartbeat/" + sessionID);
+
+					eventSource.onmessage = function(event) {
+					  console.log("New message", event.data);
+					};
 					
 					alert("Joined!");
 					

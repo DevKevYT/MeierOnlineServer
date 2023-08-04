@@ -3,6 +3,8 @@ package com.devkev.server;
 import java.util.ArrayList;
 
 import org.jooby.Jooby;
+import org.jooby.handlers.Cors;
+import org.jooby.handlers.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +75,9 @@ public class API extends Jooby {
 	}
 	
 	{
+		
+		use("*", new CorsHandler(new Cors()));
+		
 		post("/api/createguest/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -336,9 +341,11 @@ public class API extends Jooby {
 			Client c = getOnlineClientBySession(session);
 			
 			sse.onClose(() -> {
-				logger.debug("Connection to user " + c.model.displayName + " terminated");
-				c.sessionID = null;
-				c.emitter = null;
+				if(c != null) {
+					c.sessionID = null;
+					c.emitter = null;
+				}
+				logger.debug("Connection to user terminated");
 			});
 			
 			//If the request has no valid session id associated, just drop the connection
@@ -357,5 +364,6 @@ public class API extends Jooby {
 			
 			c.emitter = sse;
 		});
+
 	}
 }
