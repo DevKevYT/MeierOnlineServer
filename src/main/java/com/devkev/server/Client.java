@@ -16,6 +16,7 @@ public class Client {
 	
 	public boolean lostConnection = false;
 	public int lastEventID = 0;
+	public boolean alreadyRolled = false;
 	
 	public Client(ClientModel model) {
 		this.model = model;

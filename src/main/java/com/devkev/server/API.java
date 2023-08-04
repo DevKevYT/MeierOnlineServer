@@ -156,6 +156,11 @@ public class API extends Jooby {
 				
 				if(match != null) {
 					
+					if(match.isRunning()) {
+						rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match is currently in progress. Please wait until the current round finishes and try again."));
+						return;
+					}
+					
 					match.join(client);
 					onlineClients.add(client);
 					
@@ -212,8 +217,72 @@ public class API extends Jooby {
 			}
 		});
 		
+		//It's the next person's turn.  If the query parameter "challenge" is set to any value, the current client challenges the previous
+		//However if you are the first person to turn, these parameters are ignored
+		//The sessionID parameter is required as usual
+		//You also need to pass the die value as a two digit integer wich can be identified by the Match lookup table
+		//IF the param challenge is set, you don't need to input values
+		//Only the currentTurn is allowed to call this endpoint
+		post("/api/match/next/", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "POST");
+			
+			if(!ctx.param("dieValue").isSet() && !ctx.param("challenge").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: dieValue missing!"));
+				return;
+			}
+			
+			if(!ctx.param("sessionID").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: sessionID missing!"));
+				return;
+			}
+			
+			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				return;
+			}
+			
+			Match match = getMatchBySessionID(c.sessionID);
+			if(match == null) { //This should not happen!
+				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
+				return;
+			}
+			if(!match.getCurrentTurn().sessionID.equals(c.sessionID)) {
+				rsp.send(new ErrorResponse("", 100, "You are not allowed to pass the dice to the next person! Please wait until it's your turn!"));
+				return;
+			}
+			
+			if(ctx.param("challenge").isSet()) {
+				System.out.println("Trying to challenge");
+				match.challenge();
+			} else {
+				
+				//TODO should it be possible to pass the die without rolling?
+				if(!c.alreadyRolled) {
+					rsp.send(new ErrorResponse("", 100, "Before passing the die, please roll first!"));
+					return;
+				}
+				
+				int absoluteValue = match.getAbsoluteDieValue(ctx.param("dieValue").intValue());
+				
+				if(absoluteValue < match.getCurrentToldAbsoluteRoll()) {
+					rsp.send(new ErrorResponse("", 100, "If you are already lying, you should really consider telling a higher number or are you intentionally trying to lose?"));
+					return;
+				}
+				
+				match.next(match.getAbsoluteDieValue(ctx.param("dieValue").intValue()));
+			}
+			
+			rsp.send(new Response("")); //Just send a generic success response
+		});
+		
 		//Requires: sessionID of the host
-		post("/api/match/start/", (ctx, rsp) -> {
+		//If the match has not been started yet, calling this endpoint as host or "last loser" will start a new round
+		post("/api/match/roll/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
@@ -234,12 +303,8 @@ public class API extends Jooby {
 				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
 				return;
 			}
-			if(match.isStarted()) {
-				rsp.send(new ErrorResponse("", 100, "The match has already started!"));
-				return;
-			}
-			if(!c.model.uuid.equals(match.getHost().model.uuid)) {
-				rsp.send(new ErrorResponse("", 100, "Only the match host is allowed to start or pause the round"));
+			if(!match.allowedToStart(c)) {
+				rsp.send(new ErrorResponse("", 100, "Only the host or the last 'loser' is allowed to start/continue a match"));
 				return;
 			}
 			//Start the match and tell eneryone who's turn it is. However people can still join and leave
@@ -247,16 +312,34 @@ public class API extends Jooby {
 				rsp.send(new ErrorResponse("", 100, "Starting the match alone is a bit boring, isn't it? Wait for your friends to join first"));
 				return;
 			}
-			match.start();
+			
+			if(c.alreadyRolled) {
+				rsp.send(new ErrorResponse("", 100, "You can only throw the dice once!"));
+				return;
+			}
+			
+			if(!match.isRunning()) {
+				System.out.println("Starting the match!");
+				match.start();
+			}
+			
+			match.roll();
+			
 			rsp.send(new Response("")); //Just send a generic success response
 		});
 		
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
 		//A client needs to hit this URL with his associated session ID. If the client is in a match, the sync data is being sent every second
 		sse("/heartbeat/{sessionID}", (ctx, sse) -> {
-			String session = ctx.param("sessionID").value();
 			
+			String session = ctx.param("sessionID").value();
 			Client c = getOnlineClientBySession(session);
+			
+			sse.onClose(() -> {
+				logger.debug("Connection to user " + c.model.displayName + " terminated");
+				c.sessionID = null;
+				c.emitter = null;
+			});
 			
 			//If the request has no valid session id associated, just drop the connection
 			if(c == null) {
@@ -271,12 +354,6 @@ public class API extends Jooby {
 				sse.close();
 				return;
 			}
-			
-			sse.onClose(() -> {
-				logger.debug("Connection to user " + c.model.displayName + " terminated");
-				c.sessionID = null;
-				c.emitter = null;
-			});
 			
 			c.emitter = sse;
 		});

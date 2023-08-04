@@ -12,6 +12,7 @@ import com.devkev.models.MatchEvents.JoinEvent;
 import com.devkev.models.MatchEvents.LeaveEvent;
 import com.devkev.models.MatchEvents.MatchEvent;
 import com.devkev.models.MatchEvents.MatchEvent.Scope;
+import com.devkev.models.MatchEvents.MatchFinishEvent;
 import com.devkev.models.MatchEvents.NewTurnDieValueEvent;
 import com.devkev.models.MatchEvents.NewTurnEvent;
 import com.google.gson.Gson;
@@ -30,15 +31,16 @@ public class Match {
 	public final String matchID;
 	private ArrayList<Client> members = new ArrayList<>();
 	
-	private boolean started = false; //The match starts, when the host triggers an endpoint
+	private boolean roundInProgress = false; //The match starts (initially), when the host triggers an endpoint or the last loser. If a round is in progress, nobody can join
+	
 	private Client currentTurn;
-	private int currentTurnIndex = 0;
+	private String prevTurnClientID; //Cannot "swich" objects that easily like primitivy datatypes
 	
-	private int totalValue = 0;
-	private int absoluteValue = 0; //The value by which we can compare other rolls to (11 is higher than 65)
+	private int turnCounter = 0; //Always increment if someone turns. You can calculate the index of the actual client
+	private int streak = 0; //The more rounds we pass, the higher the stake will be
 	
-	private int totalValuePrev = 0;
-	private int absolueValuePrev = 0;
+	private int actualAbsoluteValue;
+	private int toldAbsoluteValue; //May not be true
 	
 	private Client host;
 	
@@ -71,7 +73,7 @@ public class Match {
 		lookup.put(20, 55);
 		lookup.put(21, 66);
 		//Meyer!
-		lookup.put(22, 22);
+		lookup.put(22, 21);
 	}
 	
 	//Here goes the event queue. Everything that happens in this queue is being sent when syncing clients in this match using sse
@@ -87,44 +89,152 @@ public class Match {
 	public static Match createMatch(Client host) {
 		Match m = new Match();
 		m.host = host;
+		m.currentTurn = host;
 		m.members.add(host);
 		return m;
 	}
 	
-	public boolean isStarted() { 
-		return started;
+	/**If the current round is in progress. People need to wait if they want to join*/
+	public boolean isRunning() { 
+		return roundInProgress;
 	}
 	
+	private Client getMemberByUUID(String uuid) {
+		for(Client c : members) {
+			if(c.model.uuid.equals(uuid)) return c;
+		}
+		return null;
+	}
+	
+	public boolean allowedToStart(Client c) {
+		return currentTurn == null ? (c.model.uuid.equals(getHost().model.uuid)) : currentTurn.model.uuid.equals(c.model.uuid);
+	}
+	
+	public int getAbsoluteDieValue(int roll) throws Exception {
+		for(Integer value : lookup.keySet()) {
+			if(lookup.get(value) == roll) {
+				return value;
+			}
+		}
+		
+		throw new Exception("Illegal roll value: " + roll);
+	}
+	
+	public int getRollValue(int absoluteValue) {
+		return lookup.get(absoluteValue);
+	}
+	
+	public Client getCurrentTurn()  {
+		return currentTurn;
+	}
+	
+	//Only the person whos turn it is currently can start the match
 	public void start() {
-		started = true;
-		currentTurn = host;
+		prevTurnClientID = "";
+		roundInProgress = true;
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
 		event.clientID = host.model.uuid;
 		event.displayName = host.model.displayName;
+		event.streak = 0;
 		event.prevClientID = "";
 		event.prevDisplayName = "";
 		triggerEvent(event);
-		
-		rollDice();
-		//Keep the previous values hidden
-		NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
-		roll.dieValues = totalValue;
-		roll.absolueValue = absoluteValue;
-		triggerEvent(roll, getHost());
 	}
 	
-	public void nextTurn() {
+	public void roll() {
 		
+		currentTurn.alreadyRolled = true;
+		
+		rollDice();
+		
+		//Keep the previous values hidden
+		NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
+		roll.dieValues = getRollValue(actualAbsoluteValue);
+		roll.absolueValue = actualAbsoluteValue;
+		triggerEvent(roll, currentTurn);
+	}
+	
+	public void next(int toldDieAbsoluteValue) throws Exception {
+		
+		toldAbsoluteValue = toldDieAbsoluteValue;
+		
+		turnCounter++;
+		streak++;
+		
+		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
+		event.prevClientID = currentTurn.model.uuid;
+		event.prevDisplayName = currentTurn.model.uuid;
+		event.streak = streak;
+		
+		currentTurn.alreadyRolled = false;
+		prevTurnClientID = currentTurn.model.uuid;
+		
+		Client next = members.get(turnCounter % members.size());
+		currentTurn = next;
+		
+		event.clientID = next.model.uuid;
+		event.displayName = next.model.displayName;
+		event.toldDieAbsoluteValue = toldAbsoluteValue;
+		event.toldDieRoll = getRollValue(toldDieAbsoluteValue);
+		
+		triggerEvent(event);
+	}
+	
+	//This function can make a client lose! Calling this function always ends the current round!
+	//TODO How about the case someone lies, but the value is actually higher? Should he win instead? Also make fun rules
+	public void challenge() {
+		
+		Client challenger = getMemberByUUID(prevTurnClientID);
+		Client winner;
+		Client loser;
+		
+		System.out.println("Trying to challenge " + toldAbsoluteValue + " from " + challenger.model.displayName +  " against " + actualAbsoluteValue + " from " + currentTurn.model.uuid);
+		
+		if(toldAbsoluteValue == actualAbsoluteValue) {
+			System.out.println(currentTurn.model.displayName + " lost! ");
+			winner = challenger;
+			loser = currentTurn;
+		} else {
+			System.out.println(prevTurnClientID + " lost! ");
+			winner = currentTurn;
+			loser = challenger;
+		}
+		
+		
+		MatchFinishEvent event = new MatchFinishEvent(getMostrecentEventID());
+		event.actualDieAbsoluteValue = actualAbsoluteValue;
+		event.actualDieRoll = getRollValue(actualAbsoluteValue);
+		event.winner = winner.model;
+		event.loser = loser.model;
+		event.isMeyer = toldAbsoluteValue == 22;
+		event.streak = streak;
+		event.toldDieAbsoluteValue = toldAbsoluteValue;
+		event.toldDieRoll = getRollValue(toldAbsoluteValue);
+		triggerEvent(event);
+		
+		//TODO round end message
+		System.out.println("The round finishes! " + currentTurn.model.displayName + " drinks and starts the next round!");
+		toldAbsoluteValue = 0;
+		actualAbsoluteValue = 0;
+		streak = 0;
+		roundInProgress = false;
+		prevTurnClientID = "";
+		
+		currentTurn = challenger;
+	}
+	
+	public int getCurrentToldAbsoluteRoll() {
+		return toldAbsoluteValue;
+	}
+	
+	public int getStreak() {
+		return streak;
 	}
 	
 	private void rollDice() {
-		
-		absolueValuePrev = absoluteValue;
-		totalValuePrev = totalValue;
-		
-		absoluteValue = random.nextInt(23) + 1;
-		totalValue = lookup.get(random.nextInt(23) + 1);
+		actualAbsoluteValue = random.nextInt(23) + 1;
+		System.out.println("Rolled: " +  actualAbsoluteValue);
 	}
 	
 	public void deleteMatch() {
@@ -158,6 +268,7 @@ public class Match {
 		triggerEvent(event);
 	}
 	
+	//TODO pass the turn, if the person who's turn it was leaves
 	public void leave(Client client) throws Exception {
 		
 		for(Client m : members) {

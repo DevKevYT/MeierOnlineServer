@@ -79,9 +79,34 @@ public interface MatchEvents {
 		public String displayName;
 		public String prevClientID;
 		public String prevDisplayName;
+		public int streak;
+		
+		public int toldDieAbsoluteValue;
+		public int toldDieRoll;
 		
 		public NewTurnEvent(int eventID) {
 			super(eventID, "new-turn");
+		}
+		
+	}
+	
+	public class MatchFinishEvent extends MatchEvent {
+
+		public boolean isMeyer = false;
+		
+		public int toldDieAbsoluteValue;
+		public int toldDieRoll;
+		
+		public int actualDieAbsoluteValue;
+		public int actualDieRoll;
+		
+		public int streak;
+		
+		public ClientModel loser;
+		public ClientModel winner;
+		
+		public MatchFinishEvent(int eventID) {
+			super(eventID, "finish-match");
 		}
 		
 	}
