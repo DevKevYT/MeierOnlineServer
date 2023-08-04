@@ -377,7 +377,7 @@ public class Match {
 			
 			StringBuilder generated = new StringBuilder();
 			for(int i = 0; i < 4; i++) {
-				generated.append(matchIDChars.charAt(random.nextInt(3)));
+				generated.append(matchIDChars.charAt(random.nextInt(matchIDChars.length())));
 			}
 			for(Match m : MATCHES) {
 				if(generated.toString().equals(m.matchID)) {
