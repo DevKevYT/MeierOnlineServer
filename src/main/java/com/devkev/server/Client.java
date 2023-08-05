@@ -11,7 +11,8 @@ public class Client {
 	
 	//Live data.
 	public String sessionID;
-	public int matchID;
+	public Match currentMatch;
+	
 	public Sse emitter; //The emitter associated with the current session ID
 	
 	public boolean lostConnection = false;

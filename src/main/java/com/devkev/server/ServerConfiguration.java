@@ -1,6 +1,7 @@
 package com.devkev.server;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 import com.sn1pe2win.config.dataflow.Node;
 import com.sn1pe2win.config.dataflow.Parser;
@@ -19,11 +20,10 @@ public class ServerConfiguration {
 	public final int dbPort;
 	public final String dbAddress;
 	
+	public final File debugHtmlFile;
+	
 	//Logging
 	public final String logLevel;
-	
-	//phasing
-	public final int maxLessonsPerDay;
 	
 	ServerConfiguration(File file) {
 		node = Parser.parse(file);
@@ -34,7 +34,9 @@ public class ServerConfiguration {
 		dbAddress = getOptionalField("db_server", "localhost");
 		dbSchemaName = getOptionalField("db_schema_name", "new_database");
 		logLevel = getOptionalField("log_level", "ALL"); //
-		maxLessonsPerDay = getOptionalField("ph_max_lessons_per_day", 50);
+		
+		debugHtmlFile = new File("C:/Users/Philipp/git/MeyerOnlineServer/www/testapp.html");
+		if(!debugHtmlFile.exists()) System.out.println("html file " +  debugHtmlFile + " not found!");
 	}
 	
 	private String getOptionalField(String fieldName, String fallback) {

@@ -7,14 +7,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.devkev.models.ClientModel;
 import com.devkev.models.MatchEvents.HostPromotion;
 import com.devkev.models.MatchEvents.JoinEvent;
 import com.devkev.models.MatchEvents.LeaveEvent;
 import com.devkev.models.MatchEvents.MatchEvent;
 import com.devkev.models.MatchEvents.MatchEvent.Scope;
-import com.devkev.models.MatchEvents.MatchFinishEvent;
 import com.devkev.models.MatchEvents.NewTurnDieValueEvent;
 import com.devkev.models.MatchEvents.NewTurnEvent;
+import com.devkev.models.MatchEvents.RoundCancelledEvent;
+import com.devkev.models.MatchEvents.RoundFinishEvent;
 import com.google.gson.Gson;
 
 //This class handles match logic for all connected clients
@@ -147,7 +149,7 @@ public class Match {
 		currentTurn.alreadyRolled = true;
 		
 		rollDice();
-		
+		System.out.println("Rolled: " + actualAbsoluteValue);
 		//Keep the previous values hidden
 		NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
 		roll.dieValues = getRollValue(actualAbsoluteValue);
@@ -164,13 +166,19 @@ public class Match {
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
 		event.prevClientID = currentTurn.model.uuid;
-		event.prevDisplayName = currentTurn.model.uuid;
+		event.prevDisplayName = currentTurn.model.displayName;
 		event.streak = streak;
 		
 		currentTurn.alreadyRolled = false;
 		prevTurnClientID = currentTurn.model.uuid;
 		
 		Client next = members.get(turnCounter % members.size());
+		
+		if(next.model.uuid.equals(prevTurnClientID)) { //Prevent to be your next turn
+			turnCounter++;
+			next = members.get(turnCounter % members.size());
+		}
+		
 		currentTurn = next;
 		
 		event.clientID = next.model.uuid;
@@ -202,7 +210,7 @@ public class Match {
 		}
 		
 		
-		MatchFinishEvent event = new MatchFinishEvent(getMostrecentEventID());
+		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
 		event.actualDieAbsoluteValue = actualAbsoluteValue;
 		event.actualDieRoll = getRollValue(actualAbsoluteValue);
 		event.winner = winner.model;
@@ -215,13 +223,17 @@ public class Match {
 		
 		//TODO round end message
 		System.out.println("The round finishes! " + currentTurn.model.displayName + " drinks and starts the next round!");
+		
+		endRound(loser);
+	}
+	
+	private void endRound(Client firstTurn) {
+		currentTurn = firstTurn;
 		toldAbsoluteValue = 0;
 		actualAbsoluteValue = 0;
 		streak = 0;
 		roundInProgress = false;
 		prevTurnClientID = "";
-		
-		currentTurn = challenger;
 	}
 	
 	public int getCurrentToldAbsoluteRoll() {
@@ -233,7 +245,7 @@ public class Match {
 	}
 	
 	private void rollDice() {
-		actualAbsoluteValue = random.nextInt(23) + 1;
+		actualAbsoluteValue = random.nextInt(23);
 		System.out.println("Rolled: " +  actualAbsoluteValue);
 	}
 	
@@ -258,12 +270,16 @@ public class Match {
 	}
 	
 	public void join(Client client) {
-		JoinEvent event = new JoinEvent(getMostrecentEventID());
+		client.currentMatch = this;
+		members.add(client);
 		
+		JoinEvent event = new JoinEvent(getMostrecentEventID());
 		event.clientID = client.model.uuid;
 		event.displayName = client.model.displayName;
 		
-		members.add(client);
+		ArrayList<ClientModel> members = new ArrayList<>();
+		for(Client c : getMembers()) members.add(c.model);
+		event.currentMembers = members.toArray(new ClientModel[members.size()]);
 		
 		triggerEvent(event);
 	}
@@ -278,6 +294,7 @@ public class Match {
 			}
 		}
 		
+		client.currentMatch = null;
 		client.sessionID = null;
 		client.lastEventID = 0;
 		client.emitter.close();
@@ -287,6 +304,11 @@ public class Match {
 		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
 		leave.clientID = client.model.uuid;
 		leave.displayName = client.model.displayName;
+		
+		ArrayList<ClientModel> leftOver = new ArrayList<>();
+		for(Client c : getMembers()) leftOver.add(c.model);
+		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);
+		
 		triggerEvent(leave);
 		
 		//if no members are left, just remove itself
@@ -306,6 +328,19 @@ public class Match {
 			promo.clientID = getHost().model.uuid;
 			promo.displayName = getHost().model.displayName;
 			triggerEvent(promo);
+		}
+		
+		//Breche die aktuelle Runde einfach ab
+		if(client.model.uuid.equals(currentTurn.model.uuid)) {
+			System.out.println("The current turn left the match. STarting a new round");
+			
+			currentTurn = getHost();
+			endRound(getHost());
+			
+			RoundCancelledEvent event = new RoundCancelledEvent(getMostrecentEventID());
+			event.reason = "Someone left the match while we were waiting for his turn.";
+			event.newTurn = currentTurn.model;
+			triggerEvent(event);
 		}
 	}
 	
@@ -338,7 +373,7 @@ public class Match {
 		System.out.println("Sending event to " + c.model.displayName);
 		
 		if(c.emitter != null && !c.lostConnection) {
-			if(c.emitter.event(event).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
+			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
 				
 				System.out.println("Failed to send event to client: " + c.model.displayName);
 				

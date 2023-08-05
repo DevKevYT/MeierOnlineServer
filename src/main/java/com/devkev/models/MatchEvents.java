@@ -31,6 +31,7 @@ public interface MatchEvents {
 		
 		public String clientID;
 		public String displayName;
+		public ClientModel[] currentMembers;
 		
 		public JoinEvent(int eventID) {
 			super(eventID, "match-join");
@@ -41,6 +42,7 @@ public interface MatchEvents {
 
 		public String displayName;
 		public String clientID;
+		public ClientModel[] currentMembers; //Members without the one who just left
 		
 		public LeaveEvent(int eventID) {
 			super(eventID, "match-leave");
@@ -90,8 +92,8 @@ public interface MatchEvents {
 		
 	}
 	
-	public class MatchFinishEvent extends MatchEvent {
-
+	public class RoundFinishEvent extends MatchEvent {
+		
 		public boolean isMeyer = false;
 		
 		public int toldDieAbsoluteValue;
@@ -105,8 +107,19 @@ public interface MatchEvents {
 		public ClientModel loser;
 		public ClientModel winner;
 		
-		public MatchFinishEvent(int eventID) {
+		public RoundFinishEvent(int eventID) {
 			super(eventID, "finish-match");
+		}
+		
+	}
+	
+	public class RoundCancelledEvent extends MatchEvent {
+
+		public String reason;
+		public ClientModel newTurn; //The one who starts the next round
+		
+		public RoundCancelledEvent(int eventID) {
+			super(eventID, "match-cancelled");
 		}
 		
 	}

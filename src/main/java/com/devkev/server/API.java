@@ -1,5 +1,8 @@
 package com.devkev.server;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 
 import org.jooby.Jooby;
@@ -76,6 +79,31 @@ public class API extends Jooby {
 	
 	{
 		
+		err((req, rsp, err) -> {
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			
+		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred: " + err.getMessage()));
+		});
+		
+		get("/game/", (ctx, rsp) -> {
+			
+			BufferedReader reader = new BufferedReader(new FileReader(ServerMain.SERVER_CONFIG.debugHtmlFile));
+			
+			String line = reader.readLine();
+			String body = line == null ? "" : line;
+			
+			while(line != null) {
+				body += line;
+				line = reader.readLine();
+			}
+			
+			reader.close();
+			
+			rsp.send(body);
+		});
+		
 		use("*", new CorsHandler(new Cors()));
 		
 		post("/api/createguest/", (ctx, rsp) -> {
@@ -102,6 +130,7 @@ public class API extends Jooby {
 		
 		//Creates a match with a given 4 digit id other people can join
 		//Requires: clientID as form parameter
+		//TODO optional parameter to create a match without dice comparison. Good if you are in a round together
 		post("/api/match/create/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -235,6 +264,8 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Origin", "*");
 			rsp.header("Access-Control-Allow-Methods", "POST");
 			
+			System.out.println("Die Value set: " + ctx.param("dieValue").isSet());
+			System.out.println("Challenge set: " + ctx.param("challenge").isSet());
 			if(!ctx.param("dieValue").isSet() && !ctx.param("challenge").isSet()) {
 				rsp.send(new ErrorResponse("", 100, "Required parameter: dieValue missing!"));
 				return;
@@ -272,8 +303,16 @@ public class API extends Jooby {
 					return;
 				}
 				
-				int absoluteValue = match.getAbsoluteDieValue(ctx.param("dieValue").intValue());
+				int absoluteValue;
 				
+				try {
+					absoluteValue = match.getAbsoluteDieValue(ctx.param("dieValue").intValue());
+				} catch(Exception e) {
+					rsp.send(new ErrorResponse("", 100, "Illegal dice value"));
+					return;
+				}
+				
+				//TODO verbugt!
 				if(absoluteValue < match.getCurrentToldAbsoluteRoll()) {
 					rsp.send(new ErrorResponse("", 100, "If you are already lying, you should really consider telling a higher number or are you intentionally trying to lose?"));
 					return;
@@ -333,6 +372,7 @@ public class API extends Jooby {
 			rsp.send(new Response("")); //Just send a generic success response
 		});
 		
+		//TODO handle abrupt connection loss (Currently causes n exception and corrupts the match with the problematic client)
 		//The heartbeat for all clients. It is used to synchronize the virtual clients on the server and the actual clients
 		//A client needs to hit this URL with his associated session ID. If the client is in a match, the sync data is being sent every second
 		sse("/heartbeat/{sessionID}", (ctx, sse) -> {
@@ -342,8 +382,26 @@ public class API extends Jooby {
 			
 			sse.onClose(() -> {
 				if(c != null) {
+					
+					logger.debug("Running cleanup routing for lost user ... " + c.model.uuid);
+					for(Match m : Match.MATCHES) {
+						for(Client client : m.getMembers()) {
+							if(client.model.uuid.equals(c.model.uuid)) {
+								m.leave(c);
+								logger.debug("User found and left the match");
+								break;
+							}
+						}
+					}
+					
+					c.currentMatch = null;
 					c.sessionID = null;
 					c.emitter = null;
+					
+					removeOnlineClient(c);
+					
+					logger.debug("Logged user cut the connection");
+					
 				}
 				logger.debug("Connection to user terminated");
 			});
@@ -354,6 +412,7 @@ public class API extends Jooby {
 				return;
 			}
 			
+			sse.keepAlive(10000);
 			Match joined = getMatchBySessionID(session);
 			
 			//Find the match the client is joined. If there is no match, also drop the connection

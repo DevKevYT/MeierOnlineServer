@@ -16,7 +16,7 @@ public class ServerMain {
 	
 	public static void main(String[] args) {
 		
-		SERVER_CONFIG = new ServerConfiguration(new File("C:/Users/Philipp/Nextcloud/eclipse_workspaces/eclipse/MeyerOnlineServer/debugConfiguration.conf"));
+		SERVER_CONFIG = new ServerConfiguration(new File(args[0]));
 		try {
 			DB_CON = new DBConnection(SERVER_CONFIG);
 		} catch (ClassNotFoundException | SQLException e) {
