@@ -1,7 +1,6 @@
 package com.devkev.server;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 
 import com.sn1pe2win.config.dataflow.Node;
 import com.sn1pe2win.config.dataflow.Parser;
@@ -27,6 +26,7 @@ public class ServerConfiguration {
 	
 	ServerConfiguration(File file) {
 		node = Parser.parse(file);
+		System.out.println(file.getAbsolutePath() + " configuration:\n" + node.printTree(true));
 		
 		dbUsername = getMandatoryField("db_username").getAsString();
 		dbPassword = getMandatoryField("db_password").getAsString();
@@ -35,7 +35,8 @@ public class ServerConfiguration {
 		dbSchemaName = getOptionalField("db_schema_name", "new_database");
 		logLevel = getOptionalField("log_level", "ALL"); //
 		
-		debugHtmlFile = new File("C:/Users/Philipp/git/MeyerOnlineServer/www/testapp.html");
+		System.out.println(getMandatoryField("debug_html").getAsString());
+		debugHtmlFile = new File(getMandatoryField("debug_html").getAsString());
 		if(!debugHtmlFile.exists()) System.out.println("html file " +  debugHtmlFile + " not found!");
 	}
 	

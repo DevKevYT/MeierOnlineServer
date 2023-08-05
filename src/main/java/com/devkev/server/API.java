@@ -1,8 +1,8 @@
 package com.devkev.server;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 import org.jooby.Jooby;
@@ -35,7 +35,7 @@ public class API extends Jooby {
 	
 	public Client getOnlineClientBySession(String sessionID) {
 		for(Client c : onlineClients) {
-			if(c.sessionID.equals(sessionID)) {
+			if(c.getSessionID().equals(sessionID)) {
 				return c;
 			}
 		}
@@ -63,7 +63,7 @@ public class API extends Jooby {
 	public Match getMatchBySessionID(String sessionID) {
 		for(Match m : Match.MATCHES) {
 			for(Client c : m.getMembers()) {
-				if(c.sessionID.equals(sessionID)) return m;
+				if(c.getSessionID().equals(sessionID)) return m;
 			}
 		}
 		return null;
@@ -79,6 +79,7 @@ public class API extends Jooby {
 	
 	{
 		
+		
 		err((req, rsp, err) -> {
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
@@ -89,8 +90,9 @@ public class API extends Jooby {
 		
 		get("/game/", (ctx, rsp) -> {
 			
-			BufferedReader reader = new BufferedReader(new FileReader(ServerMain.SERVER_CONFIG.debugHtmlFile));
+			rsp.header("content-type", "text/html; charset=utf-8");
 			
+			BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(ServerMain.SERVER_CONFIG.debugHtmlFile), "UTF8"));
 			String line = reader.readLine();
 			String body = line == null ? "" : line;
 			
@@ -100,7 +102,6 @@ public class API extends Jooby {
 			}
 			
 			reader.close();
-			
 			rsp.send(body);
 		});
 		
@@ -151,7 +152,7 @@ public class API extends Jooby {
 					return;
 				}
 				
-				c.sessionID = ctx.session().id();
+				c.generateUniqueSessionID();
 				
 				Match m = Match.createMatch(c);
 				onlineClients.add(c);
@@ -160,7 +161,7 @@ public class API extends Jooby {
 				res.clientID = c.model.uuid;
 				res.matchID = m.matchID;
 				res.displayName = c.model.displayName;
-				res.sessionID = c.sessionID;
+				res.sessionID = c.getSessionID();
 				
 				rsp.send(new Response(res));
 			} else {
@@ -198,11 +199,11 @@ public class API extends Jooby {
 					match.join(client);
 					onlineClients.add(client);
 					
-					client.sessionID = ctx.session().id();
+					client.generateUniqueSessionID();
 					
 					JoinMatchResponse joinResponse = new JoinMatchResponse();
 					joinResponse.matchID = match.matchID;
-					joinResponse.sessionID = client.sessionID;
+					joinResponse.sessionID = client.getSessionID();
 					
 					ArrayList<ClientModel> coll = new ArrayList<>();
 					for(Client c : match.getMembers()) 
@@ -235,7 +236,7 @@ public class API extends Jooby {
 				return;
 			}
 			
-			Match match = getMatchBySessionID(c.sessionID);
+			Match match = getMatchBySessionID(c.getSessionID());
 			if(match == null) { //This should not happen!
 				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
 				return;
@@ -264,8 +265,6 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Origin", "*");
 			rsp.header("Access-Control-Allow-Methods", "POST");
 			
-			System.out.println("Die Value set: " + ctx.param("dieValue").isSet());
-			System.out.println("Challenge set: " + ctx.param("challenge").isSet());
 			if(!ctx.param("dieValue").isSet() && !ctx.param("challenge").isSet()) {
 				rsp.send(new ErrorResponse("", 100, "Required parameter: dieValue missing!"));
 				return;
@@ -282,12 +281,12 @@ public class API extends Jooby {
 				return;
 			}
 			
-			Match match = getMatchBySessionID(c.sessionID);
+			Match match = getMatchBySessionID(c.getSessionID());
 			if(match == null) { //This should not happen!
 				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
 				return;
 			}
-			if(!match.getCurrentTurn().sessionID.equals(c.sessionID)) {
+			if(!match.getCurrentTurn().getSessionID().equals(c.getSessionID())) {
 				rsp.send(new ErrorResponse("", 100, "You are not allowed to pass the dice to the next person! Please wait until it's your turn!"));
 				return;
 			}
@@ -342,7 +341,7 @@ public class API extends Jooby {
 				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
 				return;
 			}
-			Match match = getMatchBySessionID(c.sessionID);
+			Match match = getMatchBySessionID(c.getSessionID());
 			if(match == null) { //This should not happen!
 				rsp.send(new ErrorResponse("", 100, "The session id is not associated with a match. This should not happen. Don't worry it's not your fault :("));
 				return;
@@ -383,7 +382,7 @@ public class API extends Jooby {
 			sse.onClose(() -> {
 				if(c != null) {
 					
-					logger.debug("Running cleanup routing for lost user ... " + c.model.uuid);
+					logger.debug("Running cleanup routing for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
 					for(Match m : Match.MATCHES) {
 						for(Client client : m.getMembers()) {
 							if(client.model.uuid.equals(c.model.uuid)) {
@@ -395,7 +394,7 @@ public class API extends Jooby {
 					}
 					
 					c.currentMatch = null;
-					c.sessionID = null;
+					c.removeSessionID();
 					c.emitter = null;
 					
 					removeOnlineClient(c);
@@ -412,7 +411,7 @@ public class API extends Jooby {
 				return;
 			}
 			
-			sse.keepAlive(10000);
+			sse.keepAlive(5000);
 			Match joined = getMatchBySessionID(session);
 			
 			//Find the match the client is joined. If there is no match, also drop the connection

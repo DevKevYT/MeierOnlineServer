@@ -7,7 +7,6 @@ import java.util.function.Supplier;
 import org.jooby.Jooby;
 
 import com.devkev.database.DBConnection;
-import com.devkev.server.ServerConfiguration;
 
 public class ServerMain {
 	

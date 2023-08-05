@@ -99,7 +99,7 @@
 				
 				eventSource.addEventListener('new-turn-die-value', function(e) {
 					var data = JSON.parse(e.data);
-					appendGameLog("Du hast " + data.dieValues + " gewürfelt!");
+					appendGameLog("Du hast " + data.dieValues + " gewÃ¼rfelt!");
 					console.log(e.data);
 				});
 				
@@ -110,7 +110,7 @@
 					
 					if(cid == clientID) {
 						if(data.streak > 0) {
-							appendGameLog("Du bist dran! " + displayName + " meint, eine " + JSON.parse(e.data).toldDieRoll + " gewürfelt zu haben!");
+							appendGameLog("Du bist dran! " + displayName + " meint, eine " + JSON.parse(e.data).toldDieRoll + " gewÃ¼rfelt zu haben!");
 						}
 					} else {
 						appendGameLog(data.displayName  + " ist an der Reihe");
@@ -124,10 +124,10 @@
 					
 					if(data.loser.uuid != clientID) {
 						appendGameLog("    Die Runde ist vorbei! " + data.loser.displayName + " hat verloren!<br>    " + data.toldDieRoll + " wurde angesagt, der echte Wert war: " + data.actualDieRoll);
-						appendGameLog(data.loser.displayName + " kann mit 'Würfeln' eine neue Runde beginnen");
+						appendGameLog(data.loser.displayName + " kann mit 'WÃ¼rfeln' eine neue Runde beginnen");
 					} else {
 						appendGameLog("    Die Runde ist vorbei! Du hast verloren!<br>    " + data.toldDieRoll + " wurde angesagt, der echte Wert war: " + data.actualDieRoll);
-						appendGameLog("Du kannst mit 'Würfeln' eine neue Runde beginnen");
+						appendGameLog("Du kannst mit 'WÃ¼rfeln' eine neue Runde beginnen");
 					}
 					
 					matchDone = true;
@@ -257,7 +257,7 @@
 		
 	<body>
 		<div id="guest_login">
-			<a>Bitte wähle einen Nicknamen:</a><br>
+			<a>Bitte wÃ¤hle einen Nicknamen:</a><br>
 			<input type="text" id="name"></input><br>
 			<input type="submit" onclick="login()"></input>
 		</div>
@@ -287,8 +287,8 @@
 			
 			<div class="game-controls">
 				<button id="challenge" onclick="challenge()">Anzweifeln</button>
-				<button id="roll" onclick="roll()">Würfeln</button><br>
-				<a>Sag den anderen, was du gewürfelt hast: </a><input type="text" id="guess"><br>
+				<button id="roll" onclick="roll()">WÃ¼rfeln</button><br>
+				<a>Sag den anderen, was du gewÃ¼rfelt hast: </a><input type="text" id="guess"><br>
 				<button id="passon" onclick="passon()">Weitergeben</button><br><br>
 			</div>
 		</div>

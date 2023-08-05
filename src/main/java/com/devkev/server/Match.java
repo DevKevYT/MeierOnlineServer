@@ -174,7 +174,7 @@ public class Match {
 		
 		Client next = members.get(turnCounter % members.size());
 		
-		if(next.model.uuid.equals(prevTurnClientID)) { //Prevent to be your next turn
+		if(next.model.uuid.equals(prevTurnClientID) && members.size() > 1) { //Prevent to be your next turn but only if the host is not alone
 			turnCounter++;
 			next = members.get(turnCounter % members.size());
 		}
@@ -201,6 +201,11 @@ public class Match {
 		
 		if(toldAbsoluteValue == actualAbsoluteValue) {
 			System.out.println(currentTurn.model.displayName + " lost! ");
+			winner = challenger;
+			loser = currentTurn;
+		} else if(toldAbsoluteValue < actualAbsoluteValue) {
+			System.out.println(currentTurn.model.displayName + " should lose, but the told value is less than the actual! Second chance");
+			
 			winner = challenger;
 			loser = currentTurn;
 		} else {
@@ -295,7 +300,7 @@ public class Match {
 		}
 		
 		client.currentMatch = null;
-		client.sessionID = null;
+		client.removeSessionID();
 		client.lastEventID = 0;
 		client.emitter.close();
 		

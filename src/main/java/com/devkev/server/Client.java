@@ -1,5 +1,8 @@
 package com.devkev.server;
 
+import java.util.ArrayList;
+import java.util.UUID;
+
 import org.jooby.Sse;
 
 import com.devkev.models.ClientModel;
@@ -7,10 +10,12 @@ import com.devkev.models.ClientModel;
 //This class is a "virtual" representation of the actual client and is constantly being synced with the server
 public class Client {
 
+	private static final ArrayList<String> issuedSessionIDs = new ArrayList<String>();
+	
 	public ClientModel model;
 	
 	//Live data.
-	public String sessionID;
+	private String sessionID;
 	public Match currentMatch;
 	
 	public Sse emitter; //The emitter associated with the current session ID
@@ -23,4 +28,28 @@ public class Client {
 		this.model = model;
 	}
 	
+	public boolean hasSession() {
+		return sessionID != null;
+	}
+	
+	public String getSessionID() {
+		return sessionID;
+	}
+	
+	public void removeSessionID() {
+		issuedSessionIDs.remove(sessionID);
+		sessionID = null;
+	}
+	
+	public String generateUniqueSessionID() {
+		do {
+			String uuid = UUID.randomUUID().toString();
+			
+			for(String issued : issuedSessionIDs) {
+				if(issued.equals(uuid)) continue;
+			}
+			sessionID = uuid;
+			return uuid;
+		} while(true);
+	}
 }
