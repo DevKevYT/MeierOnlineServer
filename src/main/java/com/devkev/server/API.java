@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.jooby.Jooby;
 import org.jooby.handlers.Cors;
@@ -24,7 +26,9 @@ public class API extends Jooby {
 	//ScheduledExecutorService heartbeat = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
-	private ArrayList<Client> onlineClients = new ArrayList<>();
+	//private ArrayList<Client> onlineClients = new ArrayList<>();
+	List<Client> onlineClients = Collections.synchronizedList(new ArrayList<Client>());
+	
 	private DBConnection dbSupplier;
 	
 	private final Logger logger = LoggerFactory.getLogger(API.class);
@@ -34,12 +38,39 @@ public class API extends Jooby {
 	}
 	
 	public Client getOnlineClientBySession(String sessionID) {
+		
+		ArrayList<Client> garbage = new ArrayList<Client>();
+		for(Client c : onlineClients) {
+			if(!c.hasSession()) garbage.add(c);
+		}
+		
+		for(int i = 0; i < garbage.size(); i++) 
+			onlineClients.remove(garbage.get(0));
+		
+		//TODO optionally clean up corrupted hosts
+		System.out.println(onlineClients.size() + " clients are online");
+		System.out.println(Match.MATCHES.size() + " matches in progress");
+		
 		for(Client c : onlineClients) {
 			if(c.getSessionID().equals(sessionID)) {
 				return c;
 			}
 		}
 		return null;
+	}
+	
+	private synchronized void cleanupClient(Client c) throws Exception {
+		
+		for(Match m : Match.MATCHES) {
+			for(Client client : m.getMembers()) {
+				if(client.model.uuid.equals(c.model.uuid)) {
+					m.leave(c);
+					logger.debug("User found and left the match");
+					break;
+				}
+			}
+		}
+		
 	}
 	
 	public Client getOnlineClientByUUID(String id) {
@@ -60,21 +91,27 @@ public class API extends Jooby {
 		}
 	}
 	
-	public Match getMatchBySessionID(String sessionID) {
-		for(Match m : Match.MATCHES) {
-			for(Client c : m.getMembers()) {
-				if(c.getSessionID().equals(sessionID)) return m;
+	public synchronized Match getMatchBySessionID(String sessionID) {
+		
+		synchronized (Match.MATCHES) {
+			for(Match m : Match.MATCHES) {
+				for(Client c : m.getMembers()) {
+					if(c.getSessionID().equals(sessionID)) return m;
+				}
 			}
+			return null;
 		}
-		return null;
 	}
 	
-	public Match getMatchByID(String matchID) {
-		for(Match m : Match.MATCHES) {
-			if(m.matchID.equals(matchID))
-				return m;
+	public synchronized Match getMatchByID(String matchID) {
+		
+		synchronized (Match.MATCHES) {
+			for(Match m : Match.MATCHES) {
+				if(m.matchID.equals(matchID))
+					return m;
+			}
+			return null;
 		}
-		return null;
 	}
 	
 	{
@@ -291,6 +328,11 @@ public class API extends Jooby {
 				return;
 			}
 			
+			if(ctx.param("challenge").isSet() && c.alreadyRolled) {
+				rsp.send(new ErrorResponse("", 100, "You have already accepted the previous roll! Please tell a number and pass the dice to the next person!"));
+				return;
+			}
+			
 			if(ctx.param("challenge").isSet()) {
 				System.out.println("Trying to challenge");
 				match.challenge();
@@ -383,15 +425,8 @@ public class API extends Jooby {
 				if(c != null) {
 					
 					logger.debug("Running cleanup routing for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
-					for(Match m : Match.MATCHES) {
-						for(Client client : m.getMembers()) {
-							if(client.model.uuid.equals(c.model.uuid)) {
-								m.leave(c);
-								logger.debug("User found and left the match");
-								break;
-							}
-						}
-					}
+					
+					cleanupClient(c);
 					
 					c.currentMatch = null;
 					c.removeSessionID();

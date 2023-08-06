@@ -3,6 +3,7 @@
 	<head>
 		<title>MeyerOnlineDevClient</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="stylesheet" href="C:/users/Philipp/git/MeyerOnlineServer/www/styles.css">
 		<script type="text/javascript">
 			
 			var clientID;
@@ -108,6 +109,8 @@
 					var displayName = data.prevDisplayName;
 					var cid = data.clientID;
 					
+					markCurrentTurnOnList(data.clientID);
+					
 					if(cid == clientID) {
 						if(data.streak > 0) {
 							appendGameLog("Du bist dran! " + displayName + " meint, eine " + JSON.parse(e.data).toldDieRoll + " gewürfelt zu haben!");
@@ -199,12 +202,23 @@
 				document.getElementById(screen).style.display = "block";
 			}
 			
+			function markCurrentTurnOnList(uuid) {
+				var dom = document.getElementById("online-player-list");
+				
+				for (const child of dom.children) {
+  					child.classList.remove("turn");
+				}
+				
+				document.getElementById(uuid).classList.add("turn");
+			}
+			
 			function setOnlinePlayerList(jsonData) {
 				document.getElementById("online-player-list").innerHTML = "";
 				
 				console.log(jsonData);
 				for(let element in jsonData) {
-					document.getElementById("online-player-list").innerHTML += "<li>" + jsonData[element].displayName + "</li>";
+					document.getElementById("online-player-list").innerHTML += "<li id='" + jsonData[element].uuid + "'>" + jsonData[element].displayName + (jsonData[element].uuid == clientID ? " (Du)" : "") + "</li>";
+					
 				}
 			}
 			
@@ -212,7 +226,7 @@
 		
 		<style>
 		
-			a {
+			* {
 				font-family: "Arial";
 			}
 			
@@ -251,6 +265,12 @@
 				margin: 0px;
 				padding: 0px;
 				margin-top: 40px;
+			}
+			
+			.turn {
+				font-style: italic;
+			    color: #d90000;
+			    font-size: large;
 			}
 		</style>
 	</head>

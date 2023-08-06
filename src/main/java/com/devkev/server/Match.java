@@ -1,7 +1,9 @@
 package com.devkev.server;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -25,7 +27,7 @@ public class Match {
 	private ScheduledExecutorService retry = Executors.newScheduledThreadPool(1);
 	
 	//Ensure every instance of a match is unique
-	public static final ArrayList<Match> MATCHES = new ArrayList<Match>();
+	public static final List<Match> MATCHES = Collections.synchronizedList(new ArrayList<Match>());
 	private static Random random = new Random();
 	private static final String matchIDChars = "123456789";
 	
@@ -85,7 +87,10 @@ public class Match {
 	
 	private Match() {
 		matchID = createUniqueID();
-		MATCHES.add(this);
+		
+		synchronized (MATCHES) {
+			MATCHES.add(this);			
+		}
 	}
 	
 	public static Match createMatch(Client host) {
@@ -255,7 +260,9 @@ public class Match {
 	}
 	
 	public void deleteMatch() {
-		MATCHES.remove(this);
+		synchronized (MATCHES) {
+			MATCHES.remove(this);
+		}
 	}
 	
 	public int getMostrecentEventID() {
@@ -419,9 +426,11 @@ public class Match {
 			for(int i = 0; i < 4; i++) {
 				generated.append(matchIDChars.charAt(random.nextInt(matchIDChars.length())));
 			}
-			for(Match m : MATCHES) {
-				if(generated.toString().equals(m.matchID)) {
-					continue;
+			synchronized (MATCHES) {
+				for(Match m : MATCHES) {
+					if(generated.toString().equals(m.matchID)) {
+						continue;
+					}
 				}
 			}
 			return generated.toString();
