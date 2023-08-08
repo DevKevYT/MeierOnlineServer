@@ -255,7 +255,7 @@ public class Match {
 	}
 	
 	private void rollDice() {
-		actualAbsoluteValue = random.nextInt(23);
+		actualAbsoluteValue = random.nextInt(22) + 1;
 		System.out.println("Rolled: " +  actualAbsoluteValue);
 	}
 	
