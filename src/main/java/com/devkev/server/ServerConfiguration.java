@@ -19,6 +19,9 @@ public class ServerConfiguration {
 	public final int dbPort;
 	public final String dbAddress;
 	
+	public final String ssl_certificatePath;
+	public final String ssl_keyPath;
+	
 	public final File debugHtmlFile;
 	
 	//Logging
@@ -38,6 +41,13 @@ public class ServerConfiguration {
 		System.out.println(getMandatoryField("debug_html").getAsString());
 		debugHtmlFile = new File(getMandatoryField("debug_html").getAsString());
 		if(!debugHtmlFile.exists()) System.out.println("html file " +  debugHtmlFile + " not found!");
+		
+		ssl_certificatePath = getOptionalField("ssl_cert", "");
+		ssl_keyPath = getOptionalField("ssl_key", "");
+		
+		if(ssl_certificatePath.isEmpty() || ssl_keyPath.isEmpty()) {
+			System.out.println("No ssl set");
+		}
 	}
 	
 	private String getOptionalField(String fieldName, String fallback) {

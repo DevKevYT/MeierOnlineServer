@@ -3,9 +3,16 @@ package com.devkev.server;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.jooby.Jooby;
 import org.jooby.handlers.Cors;
@@ -20,6 +27,9 @@ import com.devkev.models.Response;
 import com.devkev.models.Response.ResponseCodes;
 import com.devkev.models.ResponseModels.CreateMatchResponse;
 import com.devkev.models.ResponseModels.JoinMatchResponse;
+
+import io.netty.handler.ssl.SslHandler;
+
 
 public class API extends Jooby {
 	
@@ -115,7 +125,7 @@ public class API extends Jooby {
 	}
 	
 	{
-		
+		securePort(8443);
 		
 		err((req, rsp, err) -> {
 			

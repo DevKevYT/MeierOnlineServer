@@ -30,6 +30,7 @@ dependencies {
 	implementation 'com.google.code.gson:gson:2.8.6'
 	compile group: 'org.jooby', name: 'jooby', version: '1.6.6'
 	compile group: 'org.jooby', name: 'jooby-netty', version: '1.6.6'
+	compile group:'io.netty', name: 'netty-transport-native-epoll', version: '4.1.12.Final', classifier: 'linux-x86_64'
 	implementation 'org.reflections:reflections:0.9.12'
 	
 	//------------- DATABASE  ------------- 

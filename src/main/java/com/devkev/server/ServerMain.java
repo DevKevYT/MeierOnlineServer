@@ -22,6 +22,11 @@ public class ServerMain {
 			return;
 		}
 		
+		if(!SERVER_CONFIG.ssl_certificatePath.isEmpty() && !SERVER_CONFIG.ssl_keyPath.isEmpty()) {
+			System.setProperty("ssl.keystore.cert", SERVER_CONFIG.ssl_certificatePath);
+			System.setProperty("ssl.keystore.key", SERVER_CONFIG.ssl_keyPath);
+		}
+		
 		Jooby.run(new Supplier<Jooby>() {
 			@Override
 			public Jooby get() {
