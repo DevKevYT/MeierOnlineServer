@@ -153,8 +153,11 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Methods", "POST");
 			
 			if(!ctx.param("displayName").isSet()) {
-				System.out.println("Body: " + ctx.body().value());
 				rsp.send(new ErrorResponse("", 100, "Required parameter: displayName missing"));
+				return;
+			}
+			if(ctx.param("displayName").value().length() > 50) {
+				rsp.send(new ErrorResponse("", 100, "Your name should be less than 50 characters"));
 				return;
 			}
 			
