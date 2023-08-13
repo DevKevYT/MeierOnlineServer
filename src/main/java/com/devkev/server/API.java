@@ -1,8 +1,5 @@
 package com.devkev.server;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -124,23 +121,6 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Origin", "*");
 			
 		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred: " + err.getMessage()));
-		});
-		
-		get("/game/", (ctx, rsp) -> {
-			
-			rsp.header("content-type", "text/html; charset=utf-8");
-			
-			BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(ServerMain.SERVER_CONFIG.debugHtmlFile), "UTF8"));
-			String line = reader.readLine();
-			String body = line == null ? "" : line;
-			
-			while(line != null) {
-				body += line;
-				line = reader.readLine();
-			}
-			
-			reader.close();
-			rsp.send(body);
 		});
 		
 		use("*", new CorsHandler(new Cors()));

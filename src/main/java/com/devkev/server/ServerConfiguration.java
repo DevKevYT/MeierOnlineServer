@@ -22,8 +22,6 @@ public class ServerConfiguration {
 	public final String ssl_certificatePath;
 	public final String ssl_keyPath;
 	
-	public final File debugHtmlFile;
-	
 	//Logging
 	public final String logLevel;
 	
@@ -37,10 +35,6 @@ public class ServerConfiguration {
 		dbAddress = getOptionalField("db_server", "localhost");
 		dbSchemaName = getOptionalField("db_schema_name", "new_database");
 		logLevel = getOptionalField("log_level", "ALL"); //
-		
-		System.out.println(getMandatoryField("debug_html").getAsString());
-		debugHtmlFile = new File(getMandatoryField("debug_html").getAsString());
-		if(!debugHtmlFile.exists()) System.out.println("html file " +  debugHtmlFile + " not found!");
 		
 		ssl_certificatePath = getOptionalField("ssl_cert", "");
 		ssl_keyPath = getOptionalField("ssl_key", "");
