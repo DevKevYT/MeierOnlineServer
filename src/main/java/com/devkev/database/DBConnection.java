@@ -87,7 +87,7 @@ public class DBConnection {
 	}
 	
 	public void deleteUser(String uuid) throws SQLException {
-		queryUpdate("DELETE FROM user WHERE user_id = " + uuid);
+		queryUpdate("DELETE FROM user WHERE user_id = '" + uuid + "'");
 	}
 	
 	/**Extends the lifespan of a guest user. For example by loggin in regulary*/

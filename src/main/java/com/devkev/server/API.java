@@ -166,7 +166,7 @@ public class API extends Jooby {
 			
 			Client c = dbSupplier.getUser(ctx.param("clientID").value());
 			if(c == null) {
-				rsp.send(new ErrorResponse("", 100, "Invalid client ID"));
+				rsp.send(new ErrorResponse("", 120, "Invalid client ID"));
 				return;
 			}
 			

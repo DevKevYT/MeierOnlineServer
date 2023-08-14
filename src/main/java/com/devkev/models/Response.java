@@ -8,6 +8,7 @@ public class Response {
 		public static final int SUCCESS = 0;
 		public static final int UNKNOWN_ERROR = 100;
 		public static final int UNKNOWN_FORM_DATA = 101;
+		public static final int INVALID_CLIENT_ID = 120;
 	}
 	
 	public final int code;
