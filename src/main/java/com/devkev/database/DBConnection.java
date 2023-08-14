@@ -76,9 +76,6 @@ public class DBConnection {
 	public Client createGuestUser(String displayName) throws SQLException {
 		String uuid = UUID.randomUUID().toString();
 		
-		//queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES ('" + uuid + "', '" + displayName + "', " 
-		//		+ System.currentTimeMillis() + 60000 + ");");
-		
 		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  System.currentTimeMillis() + 60000 + ")", 
 				QueryParam.of(uuid),
 				QueryParam.of(displayName));
@@ -88,12 +85,10 @@ public class DBConnection {
 	
 	//TODO create a sceduled future (Every 5 minutes)
 	public void deleteExpiredUsers() throws SQLException {
-		//queryUpdate("DELETE FROM user WHERE expired < " + System.currentTimeMillis() + ";");
 		queryUpdate("DELETE FROM user WHERE expired < ?", QueryParam.of(System.currentTimeMillis()));
 	}
 	
 	public void deleteUser(String uuid) throws SQLException {
-		//queryUpdate("DELETE FROM user WHERE user_id = ?'" + uuid + "'");
 		queryUpdate("DELETE FROM user WHERE user_id = ?", QueryParam.of(uuid));
 	}
 	
@@ -104,7 +99,6 @@ public class DBConnection {
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
-		//ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'"));
 		ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = ?", QueryParam.of(uuid)));
 		return model != null ? new Client(model) : null;
 	}
