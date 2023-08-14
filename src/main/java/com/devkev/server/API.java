@@ -3,6 +3,7 @@ package com.devkev.server;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.jooby.Jooby;
 import org.jooby.handlers.Cors;
@@ -30,6 +31,7 @@ public class API extends Jooby {
 	private DBConnection dbSupplier;
 	
 	private final Logger logger = LoggerFactory.getLogger(API.class);
+	private final Pattern UUID_REGEX = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 	
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
@@ -146,6 +148,35 @@ public class API extends Jooby {
 			
 			
 			rsp.send(new Response(client.model));
+		});
+		
+		//TODO check for valid uuid format before accessing database
+		/**You are not allowed to call this endpoint while a session id is associated with the target client!*/
+		post("/api/forgetguest/", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "POST");
+			
+			if(!ctx.param("clientID").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: clientID missing"));
+				return;
+			}
+			
+			Client c = dbSupplier.getUser(ctx.param("clientID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", 100, "Invalid client ID"));
+				return;
+			}
+			
+			if(c.hasSession()) {
+				rsp.send(new ErrorResponse("", 100, "The client has a session id issued and is marked online. Cannot forget online users"));
+				return;
+			}
+			
+			dbSupplier.deleteUser(c.model.uuid);
+			rsp.send(new Response("")); //Send a generic "ok" message
 		});
 		
 		//Once the client joins a match, or creates a match, he is being put in the "online" list and being constantly synced with the actual client

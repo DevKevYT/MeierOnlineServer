@@ -81,8 +81,19 @@ public class DBConnection {
 		return new Client(ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'")));
 	}
 	
+	//TODO create a sceduled future (Every 5 minutes)
 	public void deleteExpiredUsers() throws SQLException {
 		queryUpdate("DELETE FROM user WHERE expired < " + System.currentTimeMillis() + ";");
+	}
+	
+	public void deleteUser(String uuid) throws SQLException {
+		queryUpdate("DELETE FROM user WHERE user_id = " + uuid);
+	}
+	
+	/**Extends the lifespan of a guest user. For example by loggin in regulary*/
+	//TODO database stuff
+	public void extendGuestUserLifespan() {
+		//queryUpdate("UPDATE ");
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
