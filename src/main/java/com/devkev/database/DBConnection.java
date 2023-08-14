@@ -2,6 +2,7 @@ package com.devkev.database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -75,19 +76,25 @@ public class DBConnection {
 	public Client createGuestUser(String displayName) throws SQLException {
 		String uuid = UUID.randomUUID().toString();
 		
-		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES ('" + uuid + "', '" + displayName + "', " 
-				+ System.currentTimeMillis() + 60000 + ");");
+		//queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES ('" + uuid + "', '" + displayName + "', " 
+		//		+ System.currentTimeMillis() + 60000 + ");");
+		
+		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  System.currentTimeMillis() + 60000 + ")", 
+				QueryParam.of(uuid),
+				QueryParam.of(displayName));
 		
 		return new Client(ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'")));
 	}
 	
 	//TODO create a sceduled future (Every 5 minutes)
 	public void deleteExpiredUsers() throws SQLException {
-		queryUpdate("DELETE FROM user WHERE expired < " + System.currentTimeMillis() + ";");
+		//queryUpdate("DELETE FROM user WHERE expired < " + System.currentTimeMillis() + ";");
+		queryUpdate("DELETE FROM user WHERE expired < ?", QueryParam.of(System.currentTimeMillis()));
 	}
 	
 	public void deleteUser(String uuid) throws SQLException {
-		queryUpdate("DELETE FROM user WHERE user_id = '" + uuid + "'");
+		//queryUpdate("DELETE FROM user WHERE user_id = ?'" + uuid + "'");
+		queryUpdate("DELETE FROM user WHERE user_id = ?", QueryParam.of(uuid));
 	}
 	
 	/**Extends the lifespan of a guest user. For example by loggin in regulary*/
@@ -97,8 +104,8 @@ public class DBConnection {
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
-		ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'"));
-		
+		//ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'"));
+		ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = ?", QueryParam.of(uuid)));
 		return model != null ? new Client(model) : null;
 	}
 	
@@ -109,19 +116,39 @@ public class DBConnection {
 				+ configuration.dbPort + "/" + configuration.dbSchemaName + "?user=" + configuration.dbUsername + "&password=" + configuration.dbPassword);
 	}
 	
-	public void queryUpdate(String query) throws SQLException {
+	public void queryUpdate(String query, QueryParam<?> ... parameters) throws SQLException {
 		Connection c = createConnection();
-		Statement stmt = c.createStatement();
+		PreparedStatement stmt = c.prepareStatement(query);
 		logger.debug("Executing update query: " + query);
 		
-	    stmt.executeUpdate(query);
+		if(parameters != null) {
+			for(int i = 0; i < parameters.length; i++) {
+				if(parameters[i].getData() instanceof Integer) 
+					stmt.setInt(i+1, (int) parameters[i].getData());
+				else if(parameters[i].getData() instanceof Long)
+					stmt.setLong(i+1, (long) parameters[i].getData());
+				else stmt.setString(i+1, parameters[i].getData().toString());
+			}
+		}
+		
+	    stmt.executeUpdate();
 	}
 		
-	public ResultSet query(String query) throws SQLException {
+	public ResultSet query(String query, QueryParam<?> ... parameters) throws SQLException {
 		Connection c = createConnection();
-		Statement stmt = c.createStatement();
+		PreparedStatement stmt = c.prepareStatement(query);
 		logger.debug("Executing query: " + query);
 		
-	    return stmt.executeQuery(query);
+		if(parameters != null) {
+			for(int i = 0; i < parameters.length; i++) {
+				if(parameters[i].getData() instanceof Integer) 
+					stmt.setInt(i+1, (int) parameters[i].getData());
+				else if(parameters[i].getData() instanceof Long)
+					stmt.setLong(i+1, (long) parameters[i].getData());
+				else stmt.setString(i+1, parameters[i].getData().toString());
+			}
+		}
+
+	    return stmt.executeQuery();
 	}
 }
