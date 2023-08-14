@@ -1,8 +1,13 @@
 package com.devkev.server;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.jooby.Jooby;
@@ -22,7 +27,7 @@ import com.devkev.models.ResponseModels.JoinMatchResponse;
 
 public class API extends Jooby {
 	
-	//ScheduledExecutorService heartbeat = Executors.newScheduledThreadPool(1);
+	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
 	//private ArrayList<Client> onlineClients = new ArrayList<>();
@@ -35,6 +40,28 @@ public class API extends Jooby {
 	
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
+		
+		deleteExpiredClients.scheduleAtFixedRate(() -> {
+			try {
+				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < " + System.currentTimeMillis());
+				
+				while(set.next()) {
+					Client c = new Client(ClientModel.create(set));
+					System.out.println(c.model.displayName + " is expired. Checking online status and deleting");
+					Client actual = getOnlineClientByUUID(c.model.uuid);
+					if(actual != null) {
+						System.out.println("Client is currently online. extending expiration!");
+						dbSupplier.query("UPDATE user SET expires = " + (System.currentTimeMillis() + 60000) + " WHERE user_id = " + actual.model.uuid);
+					} else {
+						System.out.println("Client is not online! Deleting!");
+						dbSupplier.deleteUser(c.model.uuid);
+					}
+				}
+				
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}, 0, 30, TimeUnit.SECONDS);
 	}
 	
 	public Client getOnlineClientBySession(String sessionID) {
@@ -125,7 +152,7 @@ public class API extends Jooby {
 		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred: " + err.getMessage()));
 		});
 		
-		use("*", new CorsHandler(new Cors()));
+		//use("*", new CorsHandler(new Cors()));
 		
 		post("/api/createguest/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");

@@ -76,7 +76,7 @@ public class DBConnection {
 	public Client createGuestUser(String displayName) throws SQLException {
 		String uuid = UUID.randomUUID().toString();
 		
-		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  System.currentTimeMillis() + 60000 + ")", 
+		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  (System.currentTimeMillis() + 60000l) + ")", 
 				QueryParam.of(uuid),
 				QueryParam.of(displayName));
 		
