@@ -13,14 +13,16 @@ public class ClientModel {
 	
 	//Tries to create a model from a database resultset
 	public static ClientModel create(ResultSet resultSet) throws SQLException {
-		if(resultSet.next()) {
-			ClientModel model = new ClientModel();
-			model.uuid = resultSet.getString("user_id");
-			model.displayName = resultSet.getString("display_name");
-			model.expires = resultSet.getLong("expires");
-			return model;
+		if(resultSet.isBeforeFirst()) {
+			if(!resultSet.next()) 
+				return null;
 		}
-		return null;
+		
+		ClientModel model = new ClientModel();
+		model.uuid = resultSet.getString("user_id");
+		model.displayName = resultSet.getString("display_name");
+		model.expires = resultSet.getLong("expires");
+		return model;
 	}
 	
 }

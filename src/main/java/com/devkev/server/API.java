@@ -11,12 +11,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.jooby.Jooby;
-import org.jooby.handlers.Cors;
-import org.jooby.handlers.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.devkev.database.DBConnection;
+import com.devkev.database.QueryParam;
 import com.devkev.models.ClientModel;
 import com.devkev.models.ErrorResponse;
 import com.devkev.models.Response;
@@ -36,22 +35,24 @@ public class API extends Jooby {
 	private DBConnection dbSupplier;
 	
 	private final Logger logger = LoggerFactory.getLogger(API.class);
-	private final Pattern UUID_REGEX = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+	//private final Pattern UUID_REGEX = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 	
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
 		
 		deleteExpiredClients.scheduleAtFixedRate(() -> {
 			try {
-				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < " + System.currentTimeMillis());
+				System.out.println("WTF");
+				
+				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < ?", QueryParam.of(System.currentTimeMillis()));
 				
 				while(set.next()) {
 					Client c = new Client(ClientModel.create(set));
 					System.out.println(c.model.displayName + " is expired. Checking online status and deleting");
 					Client actual = getOnlineClientByUUID(c.model.uuid);
 					if(actual != null) {
-						System.out.println("Client is currently online. extending expiration!");
-						dbSupplier.query("UPDATE user SET expires = " + (System.currentTimeMillis() + 60000) + " WHERE user_id = " + actual.model.uuid);
+						System.out.println("Client is currently online. Do nothing, cause lifespan just got extended. By the way, this should not happen! This could be a corrupted client!");
+						//dbSupplier.query("UPDATE user SET expires = " + (System.currentTimeMillis() + 60000) + " WHERE user_id = " + actual.model.uuid);
 					} else {
 						System.out.println("Client is not online! Deleting!");
 						dbSupplier.deleteUser(c.model.uuid);
@@ -61,7 +62,8 @@ public class API extends Jooby {
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 0, 30, TimeUnit.SECONDS);
+		}, 10, 10, TimeUnit.SECONDS);
+		
 	}
 	
 	public Client getOnlineClientBySession(String sessionID) {
@@ -235,6 +237,7 @@ public class API extends Jooby {
 				
 				Match m = Match.createMatch(c);
 				onlineClients.add(c);
+				dbSupplier.extendGuestUserLifespan(c);
 				
 				CreateMatchResponse res = new CreateMatchResponse();
 				res.clientID = c.model.uuid;
@@ -277,7 +280,7 @@ public class API extends Jooby {
 					
 					match.join(client);
 					onlineClients.add(client);
-					
+					dbSupplier.extendGuestUserLifespan(client);
 					client.generateUniqueSessionID();
 					
 					JoinMatchResponse joinResponse = new JoinMatchResponse();
@@ -466,7 +469,7 @@ public class API extends Jooby {
 			sse.onClose(() -> {
 				if(c != null) {
 					
-					logger.debug("Running cleanup routing for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
+					logger.debug("Running cleanup routine for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
 					
 					cleanupClient(c);
 					

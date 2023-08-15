@@ -22,6 +22,7 @@ public class DBConnection {
 	private final Logger logger;
 	
 	private final ServerConfiguration configuration;
+	public static final long GUEST_USER_LIFESPAN = 60000 * 6; //1 hour
 	
 	public DBConnection(ServerConfiguration configuration) throws ClassNotFoundException, SQLException {
 		logger  = LoggerFactory.getLogger(ServerMain.class);
@@ -76,7 +77,7 @@ public class DBConnection {
 	public Client createGuestUser(String displayName) throws SQLException {
 		String uuid = UUID.randomUUID().toString();
 		
-		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  (System.currentTimeMillis() + 60000l) + ")", 
+		queryUpdate("INSERT INTO user (user_id, display_name, expires) VALUES (?, ?, " +  (System.currentTimeMillis() + GUEST_USER_LIFESPAN) + ")", 
 				QueryParam.of(uuid),
 				QueryParam.of(displayName));
 		
@@ -92,10 +93,11 @@ public class DBConnection {
 		queryUpdate("DELETE FROM user WHERE user_id = ?", QueryParam.of(uuid));
 	}
 	
-	/**Extends the lifespan of a guest user. For example by loggin in regulary*/
-	//TODO database stuff
-	public void extendGuestUserLifespan() {
-		//queryUpdate("UPDATE ");
+	/**Extends the lifespan of a guest user. For example by creating session id's regulary
+	 * @throws SQLException */
+	public void extendGuestUserLifespan(Client user) throws SQLException {
+		logger.debug("Extending user lifespan");
+		queryUpdate("UPDATE user SET expired = ? WHERE user_id = ?", QueryParam.of(System.currentTimeMillis() + GUEST_USER_LIFESPAN), QueryParam.of(user.model.uuid));
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
