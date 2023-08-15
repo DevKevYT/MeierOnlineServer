@@ -181,7 +181,7 @@ public class API extends Jooby {
 		
 		//TODO check for valid uuid format before accessing database
 		/**You are not allowed to call this endpoint while a session id is associated with the target client!*/
-		post("/api/forgetguest/", (ctx, rsp) -> {
+		post("/api/user/delete", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
