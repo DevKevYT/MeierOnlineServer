@@ -16,7 +16,7 @@ public class ClientModel {
 		if(resultSet.isBeforeFirst()) {
 			if(!resultSet.next()) 
 				return null;
-		}
+		} else return null;
 		
 		ClientModel model = new ClientModel();
 		model.uuid = resultSet.getString("user_id");

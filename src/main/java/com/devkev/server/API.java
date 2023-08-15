@@ -42,8 +42,6 @@ public class API extends Jooby {
 		
 		deleteExpiredClients.scheduleAtFixedRate(() -> {
 			try {
-				System.out.println("WTF");
-				
 				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < ?", QueryParam.of(System.currentTimeMillis()));
 				
 				while(set.next()) {
@@ -62,7 +60,7 @@ public class API extends Jooby {
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 10, 10, TimeUnit.SECONDS);
+		}, 60, 60, TimeUnit.SECONDS);
 		
 	}
 	

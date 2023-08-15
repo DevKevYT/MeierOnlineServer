@@ -97,7 +97,7 @@ public class DBConnection {
 	 * @throws SQLException */
 	public void extendGuestUserLifespan(Client user) throws SQLException {
 		logger.debug("Extending user lifespan");
-		queryUpdate("UPDATE user SET expired = ? WHERE user_id = ?", QueryParam.of(System.currentTimeMillis() + GUEST_USER_LIFESPAN), QueryParam.of(user.model.uuid));
+		queryUpdate("UPDATE user SET expires = ? WHERE user_id = ?", QueryParam.of(System.currentTimeMillis() + GUEST_USER_LIFESPAN), QueryParam.of(user.model.uuid));
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
