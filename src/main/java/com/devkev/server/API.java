@@ -153,8 +153,19 @@ public class API extends Jooby {
 	// - a match
 	// - online list
 	// - releases session id (if valid)
-	public void disposeClient(Client client) {
+	public void disposeClient(Client client) throws Exception {
 		
+		if(client.currentMatch != null) {
+			client.currentMatch.leave(client);
+		}
+		
+		cleanupClient(client);
+		
+		client.currentMatch = null;
+		client.removeSessionID();
+		client.emitter = null;
+		
+		removeOnlineClient(client);
 	}
 	
 	{
