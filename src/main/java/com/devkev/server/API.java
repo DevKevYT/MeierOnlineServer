@@ -156,14 +156,22 @@ public class API extends Jooby {
 	public void disposeClient(Client client) throws Exception {
 		
 		if(client.currentMatch != null) {
-			client.currentMatch.leave(client);
+			try {
+				client.currentMatch.leave(client);
+			} catch (Exception e) {
+				logger.warn("Ex");
+			}
 		}
 		
 		cleanupClient(client);
 		
 		client.currentMatch = null;
 		client.removeSessionID();
-		client.emitter = null;
+		
+		if(client.emitter != null) {
+			client.emitter.close();
+			client.emitter = null;
+		}
 		
 		removeOnlineClient(client);
 	}
