@@ -22,7 +22,7 @@ public class DBConnection {
 	private final Logger logger;
 	
 	private final ServerConfiguration configuration;
-	public static final long GUEST_USER_LIFESPAN = 60000 * 6; //1 hour
+	public static final long GUEST_USER_LIFESPAN = 60000L; //1 minute
 	
 	public DBConnection(ServerConfiguration configuration) throws ClassNotFoundException, SQLException {
 		logger  = LoggerFactory.getLogger(ServerMain.class);

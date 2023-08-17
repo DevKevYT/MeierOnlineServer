@@ -60,7 +60,7 @@ public class API extends Jooby {
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 60, 60, TimeUnit.SECONDS);
+		}, 10, 10, TimeUnit.SECONDS);
 		
 	}
 	
@@ -175,6 +175,27 @@ public class API extends Jooby {
 			
 			
 			rsp.send(new Response(client.model));
+		});
+		
+		get("/api/user/get/{clientID}", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "GET");
+			
+			if(!ctx.param("clientID").isSet()) {
+				rsp.send(new ErrorResponse("", 100, "Required parameter: clientID missing"));
+				return;
+			}
+			
+			Client c = dbSupplier.getUser(ctx.param("clientID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", 120, "Invalid client ID"));
+				return;
+			}
+			
+			rsp.send(new Response(c.model));
 		});
 		
 		//TODO check for valid uuid format before accessing database
