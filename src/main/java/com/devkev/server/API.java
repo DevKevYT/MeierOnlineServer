@@ -149,6 +149,14 @@ public class API extends Jooby {
 		}
 	}
 	
+	//Removes a client from:
+	// - a match
+	// - online list
+	// - releases session id (if valid)
+	public void disposeClient(Client client) {
+		
+	}
+	
 	{
 		securePort(5555);
 		
@@ -226,8 +234,8 @@ public class API extends Jooby {
 				return;
 			}
 			
-			if(c.hasSession()) {
-				rsp.send(new ErrorResponse("", 100, "The client has a session id issued and is marked online. Cannot forget online users"));
+			if(c.hasSession() && c.sessionValid()) {
+				rsp.send(new ErrorResponse("", 100, "The client has a valid session id issued and is marked online. Cannot forget online users"));
 				return;
 			}
 			
@@ -249,33 +257,37 @@ public class API extends Jooby {
 			
 			String clientID = ctx.param("clientID").value();
 			
-			//get the id of the user and create a session. This session is being used until the client goes offline
-			//If the user already has a session, return an error
-			if(getOnlineClientByUUID(clientID) == null) {
-				
-				Client c = dbSupplier.getUser(clientID);
-				
-				if(c == null) {
-					rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Unknown clientID: " + clientID));
+			//Check if the client has a valid session id. If not, remove the client from the online users
+			Client c = getOnlineClientByUUID(clientID);
+			if(c != null) {
+				if(c.sessionValid()) {
+					rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Client has already created a match. Please leave before creating a new one"));
 					return;
+				} else {
+					onlineClients.remove(c);
 				}
-				
-				c.generateUniqueSessionID();
-				
-				Match m = Match.createMatch(c);
-				onlineClients.add(c);
-				dbSupplier.extendGuestUserLifespan(c);
-				
-				CreateMatchResponse res = new CreateMatchResponse();
-				res.clientID = c.model.uuid;
-				res.matchID = m.matchID;
-				res.displayName = c.model.displayName;
-				res.sessionID = c.getSessionID();
-				
-				rsp.send(new Response(res));
-			} else {
-				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Client has already created a match. Please leave before creating a new one"));
 			}
+			
+			c = dbSupplier.getUser(clientID);
+			
+			if(c == null) {
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Unknown clientID: " + clientID));
+				return;
+			}
+			
+			c.generateUniqueSessionID();
+			
+			Match m = Match.createMatch(c);
+			onlineClients.add(c);
+			dbSupplier.extendGuestUserLifespan(c);
+			
+			CreateMatchResponse res = new CreateMatchResponse();
+			res.clientID = c.model.uuid;
+			res.matchID = m.matchID;
+			res.displayName = c.model.displayName;
+			res.sessionID = c.getSessionID();
+			
+			rsp.send(new Response(res));
 		});
 		
 		//TODO Error codes!!

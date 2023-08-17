@@ -24,6 +24,8 @@ public class DBConnection {
 	private final ServerConfiguration configuration;
 	public static final long GUEST_USER_LIFESPAN = 60000L * 60L; //1 stunde
 	
+	private final Connection c;
+	
 	public DBConnection(ServerConfiguration configuration) throws ClassNotFoundException, SQLException {
 		logger  = LoggerFactory.getLogger(ServerMain.class);
 		
@@ -49,6 +51,8 @@ public class DBConnection {
 	    checkSOLCSchema(testConnection);
 	   
 	    testConnection.close();
+	    
+	    c = createConnection();
 	}
 	
 	/**Generates a schema with information from the configuration with all nessecary tables using a test connection
@@ -113,7 +117,6 @@ public class DBConnection {
 	}
 	
 	public void queryUpdate(String query, QueryParam<?> ... parameters) throws SQLException {
-		Connection c = createConnection();
 		PreparedStatement stmt = c.prepareStatement(query);
 		logger.debug("Executing update query: " + query);
 		
@@ -128,11 +131,11 @@ public class DBConnection {
 		}
 		
 	    stmt.executeUpdate();
-	    c.close();
 	}
-		
+	
+	/**Close the connection!*/
 	public ResultSet query(String query, QueryParam<?> ... parameters) throws SQLException {
-		Connection c = createConnection();
+		
 		PreparedStatement stmt = c.prepareStatement(query);
 		logger.debug("Executing query: " + query);
 		
@@ -145,9 +148,8 @@ public class DBConnection {
 				else stmt.setString(i+1, parameters[i].getData().toString());
 			}
 		}
-
 	    ResultSet result = stmt.executeQuery();
-	    c.close();
+	    
 	    return result;
 	}
 }
