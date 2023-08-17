@@ -46,8 +46,16 @@ public class API extends Jooby {
 				
 				while(set.next()) {
 					Client c = new Client(ClientModel.create(set));
+					
+					if(c.model == null) {
+						System.out.println("Unable to create client model. This should not happen!");
+						continue;
+					}
+					
 					System.out.println(c.model.displayName + " is expired. Checking online status and deleting");
+					
 					Client actual = getOnlineClientByUUID(c.model.uuid);
+					
 					if(actual != null) {
 						System.out.println("Client is currently online. Do nothing, cause lifespan just got extended. By the way, this should not happen! This could be a corrupted client!");
 						//dbSupplier.query("UPDATE user SET expires = " + (System.currentTimeMillis() + 60000) + " WHERE user_id = " + actual.model.uuid);
@@ -56,11 +64,11 @@ public class API extends Jooby {
 						dbSupplier.deleteUser(c.model.uuid);
 					}
 				}
-				
+				System.out.println("Sceduler finished");
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 10, 10, TimeUnit.SECONDS);
+		}, 60, 60, TimeUnit.SECONDS);
 		
 	}
 	

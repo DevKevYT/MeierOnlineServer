@@ -16,13 +16,17 @@ public class ClientModel {
 		if(resultSet.isBeforeFirst()) {
 			if(!resultSet.next()) 
 				return null;
-		} else return null;
+		}
 		
-		ClientModel model = new ClientModel();
-		model.uuid = resultSet.getString("user_id");
-		model.displayName = resultSet.getString("display_name");
-		model.expires = resultSet.getLong("expires");
-		return model;
+		try {
+			ClientModel model = new ClientModel();
+			model.uuid = resultSet.getString("user_id");
+			model.displayName = resultSet.getString("display_name");
+			model.expires = resultSet.getLong("expires");
+			return model;
+		} catch(SQLException exception) {
+			return null;
+		}
 	}
 	
 }

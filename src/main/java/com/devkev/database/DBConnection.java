@@ -22,7 +22,7 @@ public class DBConnection {
 	private final Logger logger;
 	
 	private final ServerConfiguration configuration;
-	public static final long GUEST_USER_LIFESPAN = 60000L; //1 minute
+	public static final long GUEST_USER_LIFESPAN = 60000L * 60L; //1 stunde
 	
 	public DBConnection(ServerConfiguration configuration) throws ClassNotFoundException, SQLException {
 		logger  = LoggerFactory.getLogger(ServerMain.class);
@@ -128,6 +128,7 @@ public class DBConnection {
 		}
 		
 	    stmt.executeUpdate();
+	    c.close();
 	}
 		
 	public ResultSet query(String query, QueryParam<?> ... parameters) throws SQLException {
@@ -145,6 +146,8 @@ public class DBConnection {
 			}
 		}
 
-	    return stmt.executeQuery();
+	    ResultSet result = stmt.executeQuery();
+	    c.close();
+	    return result;
 	}
 }
