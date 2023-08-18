@@ -1,5 +1,6 @@
 package com.devkev.models;
 
+import com.devkev.server.Match.MatchLeaveReasons;
 import com.google.gson.Gson;
 
 public interface MatchEvents {
@@ -43,6 +44,7 @@ public interface MatchEvents {
 		public String displayName;
 		public String clientID;
 		public ClientModel[] currentMembers; //Members without the one who just left
+		public MatchLeaveReasons reason;
 		
 		public LeaveEvent(int eventID) {
 			super(eventID, "match-leave");

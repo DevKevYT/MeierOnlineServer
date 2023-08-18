@@ -22,6 +22,7 @@ import com.devkev.models.Response;
 import com.devkev.models.Response.ResponseCodes;
 import com.devkev.models.ResponseModels.CreateMatchResponse;
 import com.devkev.models.ResponseModels.JoinMatchResponse;
+import com.devkev.server.Match.MatchLeaveReasons;
 
 
 public class API extends Jooby {
@@ -40,8 +41,34 @@ public class API extends Jooby {
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
 		
+		//TODO sceduler to kick afk clients from matches. 
+		//The client is kept in the online list, but with an invalid session. When the client calls endpoints that require a sessionID inform the client about the expired session but do nothing else. (He got kicked prior)
+		//Automatically dispose the client after	 (~5 minutes)
+		
+		
 		deleteExpiredClients.scheduleAtFixedRate(() -> {
 			try {
+				
+				//Handle invalid sessions. They are automatically kicked from the match but receive a sse event informing about an expired session
+				synchronized (onlineClients) {
+					ArrayList<Client> garbage = new ArrayList<>();
+					for(Client c : onlineClients) {
+						if(!c.sessionValid())
+							garbage.add(c);
+					}
+					
+					while(garbage.size() > 0) {
+						try {
+							logger.debug("Kicking " + garbage.get(0).model.displayName + " because the session expired!");
+							garbage.get(0).currentMatch.leave(garbage.get(0), MatchLeaveReasons.SESSION_EXPIRED);
+						} catch (Exception e) {
+							logger.warn("Exception while kicking client: " + e.getMessage());
+							e.printStackTrace();
+						}
+						garbage.remove(0);
+					}
+				}
+				
 				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < ?", QueryParam.of(System.currentTimeMillis()));
 				
 				while(set.next()) {
@@ -79,8 +106,10 @@ public class API extends Jooby {
 			if(!c.hasSession()) garbage.add(c);
 		}
 		
-		for(int i = 0; i < garbage.size(); i++) 
+		while(garbage.size() > 0) {
 			onlineClients.remove(garbage.get(0));
+			garbage.remove(0);
+		}
 		
 		//TODO optionally clean up corrupted hosts
 		System.out.println(onlineClients.size() + " clients are online");
@@ -99,7 +128,7 @@ public class API extends Jooby {
 		for(Match m : Match.MATCHES) {
 			for(Client client : m.getMembers()) {
 				if(client.model.uuid.equals(c.model.uuid)) {
-					m.leave(c);
+					m.leave(c, MatchLeaveReasons.UNKNOWN);
 					logger.debug("User found and left the match");
 					break;
 				}
@@ -115,15 +144,6 @@ public class API extends Jooby {
 			}
 		}
 		return null;
-	}
-	
-	public void removeOnlineClient(Client client) {
-		for(Client c : onlineClients) {
-			if(c.model.uuid.equals(client.model.uuid)) {
-				onlineClients.remove(c);
-				return;
-			}
-		}
 	}
 	
 	public synchronized Match getMatchBySessionID(String sessionID) {
@@ -153,27 +173,33 @@ public class API extends Jooby {
 	// - a match
 	// - online list
 	// - releases session id (if valid)
-	public void disposeClient(Client client) throws Exception {
+	public void removeOnlineClient(Client client, MatchLeaveReasons reason) {
 		
 		if(client.currentMatch != null) {
 			try {
-				client.currentMatch.leave(client);
+				client.currentMatch.leave(client, reason);
 			} catch (Exception e) {
-				logger.warn("Ex");
+				logger.warn("Exception while triggering leave match: " + e.getLocalizedMessage() + " while removing online client");
 			}
 		}
 		
-		cleanupClient(client);
+		try {
+			cleanupClient(client);
+		} catch (Exception e) {
+			logger.warn("Exception while cleaning up client: " + e.getLocalizedMessage() + " while removing online client");
+		}
 		
 		client.currentMatch = null;
 		client.removeSessionID();
 		
 		if(client.emitter != null) {
-			client.emitter.close();
+			try {
+				client.emitter.close();
+			} catch (Exception e) {
+				logger.warn("Exception while closing sse emitter: " + e.getLocalizedMessage() + " while removing online client");
+			}
 			client.emitter = null;
 		}
-		
-		removeOnlineClient(client);
 	}
 	
 	{
@@ -358,6 +384,7 @@ public class API extends Jooby {
 		});
 		
 		//Requires the session id of the joined user. If the user is the host, a random other client is chosen and notified via event
+		//Endpoints that require a session ID may return the error code 121 (session id expired)
 		post("/api/match/leave/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -372,7 +399,7 @@ public class API extends Jooby {
 			
 			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
 			if(c == null) {
-				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid or expired"));
 				return;
 			}
 			
@@ -383,8 +410,8 @@ public class API extends Jooby {
 			}
 			
 			try {
-				match.leave(c);
-				removeOnlineClient(c);
+				match.leave(c, MatchLeaveReasons.REGULAR);
+				removeOnlineClient(c, MatchLeaveReasons.REGULAR);
 				rsp.send(new Response("")); //Send a generic "ok" message
 			} catch(Exception e) {
 				rsp.send(new ErrorResponse("", 100, "Error while leaving match: " + e.getMessage()));
@@ -417,7 +444,7 @@ public class API extends Jooby {
 			
 			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
 			if(c == null) {
-				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid or expired"));
 				return;
 			}
 			
@@ -439,6 +466,7 @@ public class API extends Jooby {
 			if(ctx.param("challenge").isSet()) {
 				System.out.println("Trying to challenge");
 				match.challenge();
+				c.extendSessionLifetime();
 			} else {
 				
 				//TODO should it be possible to pass the die without rolling?
@@ -461,6 +489,7 @@ public class API extends Jooby {
 					return;
 				}
 				
+				c.extendSessionLifetime();
 				match.next(match.getAbsoluteDieValue(ctx.param("dieValue").intValue()));
 			}
 			
@@ -482,7 +511,7 @@ public class API extends Jooby {
 			}
 			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
 			if(c == null) {
-				rsp.send(new ErrorResponse("", 100, "The session id is not valid"));
+				rsp.send(new ErrorResponse("", 100, "The session id is not valid or expired"));
 				return;
 			}
 			Match match = getMatchBySessionID(c.getSessionID());
@@ -510,6 +539,7 @@ public class API extends Jooby {
 				match.start();
 			}
 			
+			c.extendSessionLifetime();
 			match.roll();
 			
 			rsp.send(new Response("")); //Just send a generic success response
@@ -526,6 +556,7 @@ public class API extends Jooby {
 			sse.onClose(() -> {
 				if(c != null) {
 					
+					logger.debug("Logged user cut the connection");
 					logger.debug("Running cleanup routine for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
 					
 					cleanupClient(c);
@@ -534,11 +565,10 @@ public class API extends Jooby {
 					c.removeSessionID();
 					c.emitter = null;
 					
-					removeOnlineClient(c);
-					
-					logger.debug("Logged user cut the connection");
+					removeOnlineClient(c, MatchLeaveReasons.CONNECTION_LOSS);
 					
 				}
+				
 				logger.debug("Connection to user terminated");
 			});
 			

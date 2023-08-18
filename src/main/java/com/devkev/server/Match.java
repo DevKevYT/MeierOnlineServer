@@ -24,6 +24,15 @@ import com.google.gson.Gson;
 //This class handles match logic for all connected clients
 public class Match {
 	
+	//Reasons, why a client left an active match
+	public enum MatchLeaveReasons {
+		UNKNOWN,
+		REGULAR,  //The user pressed the "leave" button ...
+		KICKED, 
+		SESSION_EXPIRED, 
+		CONNECTION_LOSS //aka "afk"
+	}
+	
 	private ScheduledExecutorService retry = Executors.newScheduledThreadPool(1);
 	
 	//Ensure every instance of a match is unique
@@ -98,6 +107,7 @@ public class Match {
 		m.host = host;
 		m.currentTurn = host;
 		m.members.add(host);
+		host.currentMatch = m;
 		return m;
 	}
 	
@@ -297,7 +307,7 @@ public class Match {
 	}
 	
 	//TODO pass the turn, if the person who's turn it was leaves
-	public void leave(Client client) throws Exception {
+	public void leave(Client client, MatchLeaveReasons reason) throws Exception {
 		
 		for(Client m : members) {
 			if(m.model.uuid.equals(client.model.uuid)) {
@@ -344,7 +354,7 @@ public class Match {
 		
 		//Breche die aktuelle Runde einfach ab
 		if(client.model.uuid.equals(currentTurn.model.uuid)) {
-			System.out.println("The current turn left the match. STarting a new round");
+			System.out.println("The current turn left the match. Starting a new round");
 			
 			currentTurn = getHost();
 			endRound(getHost());
