@@ -10,7 +10,7 @@ import com.devkev.models.ClientModel;
 //This class is a "virtual" representation of the actual client and is constantly being synced with the server
 public class Client {
 
-	public static final int SESSION_LIFETIME = 60000; //3 minutes at default
+	public static final int SESSION_LIFETIME = 60000 * 5; //5 minutes at default
 	
 	private static final ArrayList<String> issuedSessionIDs = new ArrayList<String>();
 	

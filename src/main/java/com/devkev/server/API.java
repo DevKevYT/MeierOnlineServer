@@ -41,11 +41,6 @@ public class API extends Jooby {
 	public API(DBConnection dbSupplier) {
 		this.dbSupplier = dbSupplier;
 		
-		//TODO sceduler to kick afk clients from matches. 
-		//The client is kept in the online list, but with an invalid session. When the client calls endpoints that require a sessionID inform the client about the expired session but do nothing else. (He got kicked prior)
-		//Automatically dispose the client after	 (~5 minutes)
-		
-		
 		deleteExpiredClients.scheduleAtFixedRate(() -> {
 			try {
 				
@@ -60,7 +55,9 @@ public class API extends Jooby {
 					while(garbage.size() > 0) {
 						try {
 							logger.debug("Kicking " + garbage.get(0).model.displayName + " because the session expired!");
-							garbage.get(0).currentMatch.leave(garbage.get(0), MatchLeaveReasons.SESSION_EXPIRED);
+							if(garbage.get(0).currentMatch != null) {
+								garbage.get(0).currentMatch.leave(garbage.get(0), MatchLeaveReasons.SESSION_EXPIRED);
+							}
 						} catch (Exception e) {
 							logger.warn("Exception while kicking client: " + e.getMessage());
 							e.printStackTrace();

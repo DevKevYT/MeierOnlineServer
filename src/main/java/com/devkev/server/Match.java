@@ -309,6 +309,23 @@ public class Match {
 	//TODO pass the turn, if the person who's turn it was leaves
 	public void leave(Client client, MatchLeaveReasons reason) throws Exception {
 		
+		client.currentMatch = null;
+		client.removeSessionID();
+		client.lastEventID = 0;
+		
+		System.out.println("Client " + client.model.displayName + " removed from match. " + members.size() + " left!");
+		
+		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
+		leave.clientID = client.model.uuid;
+		leave.displayName = client.model.displayName;
+		leave.reason = reason;
+		
+		ArrayList<ClientModel> leftOver = new ArrayList<>();
+		for(Client c : getMembers()) leftOver.add(c.model);
+		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);
+		
+		triggerEvent(leave);
+		
 		for(Client m : members) {
 			if(m.model.uuid.equals(client.model.uuid)) {
 				members.remove(m);
@@ -316,22 +333,7 @@ public class Match {
 			}
 		}
 		
-		client.currentMatch = null;
-		client.removeSessionID();
-		client.lastEventID = 0;
 		client.emitter.close();
-		
-		System.out.println("Client " + client.model.displayName + " removed from match. " + members.size() + " left!");
-		
-		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
-		leave.clientID = client.model.uuid;
-		leave.displayName = client.model.displayName;
-		
-		ArrayList<ClientModel> leftOver = new ArrayList<>();
-		for(Client c : getMembers()) leftOver.add(c.model);
-		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);
-		
-		triggerEvent(leave);
 		
 		//if no members are left, just remove itself
 		if(members.size() == 0) {
@@ -364,6 +366,7 @@ public class Match {
 			event.newTurn = currentTurn.model;
 			triggerEvent(event);
 		}
+		
 	}
 	
 	private int triggerEvent(MatchEvent event) {
@@ -392,7 +395,7 @@ public class Match {
 	}
 	
 	private void triggerEventForSingleClient(MatchEvent event, Client c) {
-		System.out.println("Sending event to " + c.model.displayName);
+		System.out.println("Sending event to " + c.model.displayName + new Gson().toJson(event));
 		
 		if(c.emitter != null && !c.lostConnection) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
