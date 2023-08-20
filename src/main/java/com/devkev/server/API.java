@@ -8,9 +8,10 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import org.jooby.Jooby;
+import org.jooby.handlers.Cors;
+import org.jooby.handlers.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,7 @@ public class API extends Jooby {
 	//All clients that are currenty online and being associated with a session id. 
 	//private ArrayList<Client> onlineClients = new ArrayList<>();
 	List<Client> onlineClients = Collections.synchronizedList(new ArrayList<Client>());
+	//Hashtable<String, Client> onlineClients = new Hashtable<String, Client>();
 	
 	private DBConnection dbSupplier;
 	
@@ -55,9 +57,7 @@ public class API extends Jooby {
 					while(garbage.size() > 0) {
 						try {
 							logger.debug("Kicking " + garbage.get(0).model.displayName + " because the session expired!");
-							if(garbage.get(0).currentMatch != null) {
-								garbage.get(0).currentMatch.leave(garbage.get(0), MatchLeaveReasons.SESSION_EXPIRED);
-							}
+							removeOnlineClient(garbage.get(0), MatchLeaveReasons.SESSION_EXPIRED);
 						} catch (Exception e) {
 							logger.warn("Exception while kicking client: " + e.getMessage());
 							e.printStackTrace();
@@ -210,7 +210,7 @@ public class API extends Jooby {
 		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred: " + err.getMessage()));
 		});
 		
-		//use("*", new CorsHandler(new Cors()));
+		use("*", new CorsHandler(new Cors()));
 		
 		post("/api/createguest/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
@@ -550,6 +550,7 @@ public class API extends Jooby {
 			String session = ctx.param("sessionID").value();
 			Client c = getOnlineClientBySession(session);
 			
+			//don't instantly close the connection. wait for a reconnect for example when the user refreshes the browser or has a poor internet connection.
 			sse.onClose(() -> {
 				if(c != null) {
 					

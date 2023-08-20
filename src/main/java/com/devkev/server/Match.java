@@ -313,7 +313,7 @@ public class Match {
 		client.removeSessionID();
 		client.lastEventID = 0;
 		
-		System.out.println("Client " + client.model.displayName + " removed from match. " + members.size() + " left!");
+		System.out.println("Client " + client.model.displayName + " removed from match. " + (members.size()-1) + " left!");
 		
 		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
 		leave.clientID = client.model.uuid;
@@ -333,7 +333,9 @@ public class Match {
 			}
 		}
 		
-		client.emitter.close();
+		//The emitter is null, if the client (for whatever reason) never hit the /heartbeat endpoint when joining a match!
+		if(client.emitter != null)
+			client.emitter.close();
 		
 		//if no members are left, just remove itself
 		if(members.size() == 0) {
