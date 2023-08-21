@@ -47,12 +47,12 @@ public class Client {
 	}
 	
 	public void extendSessionLifetime() {
-		System.out.println("Extended session lifetime for " + model.displayName);
 		sessionIdValid = System.currentTimeMillis() + SESSION_LIFETIME;
+		System.out.println("Extended session lifetime for " + model.displayName + " until " + sessionIdValid);
 	}
 	
 	public boolean sessionValid() {
-		return System.currentTimeMillis() > sessionIdValid && hasSession();
+		return System.currentTimeMillis() <= sessionIdValid && hasSession();
 	}
 	
 	public String generateUniqueSessionID() {

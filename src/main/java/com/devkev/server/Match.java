@@ -30,7 +30,8 @@ public class Match {
 		REGULAR,  //The user pressed the "leave" button ...
 		KICKED, 
 		SESSION_EXPIRED, 
-		CONNECTION_LOSS //aka "afk"
+		CONNECTION_LOSS, //aka "afk"
+		NEW_LOGIN
 	}
 	
 	private ScheduledExecutorService retry = Executors.newScheduledThreadPool(1);

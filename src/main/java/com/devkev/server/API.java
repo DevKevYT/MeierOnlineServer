@@ -88,11 +88,11 @@ public class API extends Jooby {
 						dbSupplier.deleteUser(c.model.uuid);
 					}
 				}
-				System.out.println("Sceduler finished");
+				System.out.println("Sceduler finished. " + onlineClients.size() + " clients online, " + Match.MATCHES.size() + " matches in progress.");
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 60, 60, TimeUnit.SECONDS);
+		}, 10, 10, TimeUnit.SECONDS);
 		
 	}
 	
@@ -100,10 +100,11 @@ public class API extends Jooby {
 		
 		ArrayList<Client> garbage = new ArrayList<Client>();
 		for(Client c : onlineClients) {
-			if(!c.hasSession()) garbage.add(c);
+			if(!c.sessionValid()) garbage.add(c);
 		}
 		
 		while(garbage.size() > 0) {
+			removeOnlineClient(garbage.get(0), MatchLeaveReasons.UNKNOWN);
 			onlineClients.remove(garbage.get(0));
 			garbage.remove(0);
 		}
@@ -118,20 +119,6 @@ public class API extends Jooby {
 			}
 		}
 		return null;
-	}
-	
-	private synchronized void cleanupClient(Client c) throws Exception {
-		
-		for(Match m : Match.MATCHES) {
-			for(Client client : m.getMembers()) {
-				if(client.model.uuid.equals(c.model.uuid)) {
-					m.leave(c, MatchLeaveReasons.UNKNOWN);
-					logger.debug("User found and left the match");
-					break;
-				}
-			}
-		}
-		
 	}
 	
 	public Client getOnlineClientByUUID(String id) {
@@ -181,7 +168,15 @@ public class API extends Jooby {
 		}
 		
 		try {
-			cleanupClient(client);
+			for(Match m : Match.MATCHES) {
+				for(Client c : m.getMembers()) {
+					if(client.model.uuid.equals(c.model.uuid)) {
+						m.leave(c, MatchLeaveReasons.UNKNOWN);
+						logger.debug("User found and left the match");
+						break;
+					}
+				}
+			}
 		} catch (Exception e) {
 			logger.warn("Exception while cleaning up client: " + e.getLocalizedMessage() + " while removing online client");
 		}
@@ -197,6 +192,8 @@ public class API extends Jooby {
 			}
 			client.emitter = null;
 		}
+		
+		onlineClients.remove(client);
 	}
 	
 	{
@@ -347,37 +344,36 @@ public class API extends Jooby {
 			
 			Client client = dbSupplier.getUser(clientID);
 			 
-			//If the second statement is not null, the client has already joined another match!
-			if(client != null && getOnlineClientByUUID(clientID) == null) {
-				
-				Match match = getMatchByID(matchID);
-				
-				if(match != null) {
-					
-					if(match.isRunning()) {
-						rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match is currently in progress. Please wait until the current round finishes and try again."));
-						return;
-					}
-					
-					match.join(client);
-					onlineClients.add(client);
-					dbSupplier.extendGuestUserLifespan(client);
-					client.generateUniqueSessionID();
-					
-					JoinMatchResponse joinResponse = new JoinMatchResponse();
-					joinResponse.matchID = match.matchID;
-					joinResponse.sessionID = client.getSessionID();
-					
-					ArrayList<ClientModel> coll = new ArrayList<>();
-					for(Client c : match.getMembers()) 
-						coll.add(c.model);
-					joinResponse.joinedClients = coll.toArray(new ClientModel[coll.size()]);
-					
-					rsp.send(new Response(joinResponse));
-					
-				} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
+			if(client != null && getOnlineClientByUUID(clientID) == null) 
+				removeOnlineClient(client, MatchLeaveReasons.NEW_LOGIN);
 			
-			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The client with this id does not exist or already joined another match!"));
+			//If the second statement is not null, the client has already joined another match!
+			Match match = getMatchByID(matchID);
+			
+			if(match != null) {
+				
+				if(match.isRunning()) {
+					rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match is currently in progress. Please wait until the current round finishes and try again."));
+					return;
+				}
+				
+				match.join(client);
+				onlineClients.add(client);
+				dbSupplier.extendGuestUserLifespan(client);
+				client.generateUniqueSessionID();
+				
+				JoinMatchResponse joinResponse = new JoinMatchResponse();
+				joinResponse.matchID = match.matchID;
+				joinResponse.sessionID = client.getSessionID();
+				
+				ArrayList<ClientModel> coll = new ArrayList<>();
+				for(Client c : match.getMembers()) 
+					coll.add(c.model);
+				joinResponse.joinedClients = coll.toArray(new ClientModel[coll.size()]);
+				
+				rsp.send(new Response(joinResponse));
+				
+			} else rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "The match you are trying to join does not exist"));
 		});
 		
 		//Requires the session id of the joined user. If the user is the host, a random other client is chosen and notified via event
@@ -550,14 +546,15 @@ public class API extends Jooby {
 			String session = ctx.param("sessionID").value();
 			Client c = getOnlineClientBySession(session);
 			
-			//don't instantly close the connection. wait for a reconnect for example when the user refreshes the browser or has a poor internet connection.
+			//TODO don't instantly close the connection. wait for a reconnect for example when the user refreshes the browser or has a poor internet connection.
 			sse.onClose(() -> {
 				if(c != null) {
 					
 					logger.debug("Logged user cut the connection");
 					logger.debug("Running cleanup routine for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
 					
-					cleanupClient(c);
+					if(c.currentMatch != null)
+						c.currentMatch.leave(c, MatchLeaveReasons.CONNECTION_LOSS);
 					
 					c.currentMatch = null;
 					c.removeSessionID();
