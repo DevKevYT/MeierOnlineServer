@@ -13,9 +13,17 @@ public interface ResponseModels {
 	
 	public class JoinMatchResponse {
 		
+		public ClientModel currentTurn;
 		public String sessionID;
 		public ClientModel[] joinedClients;
 		public String matchID;
+		
+	}
+	
+	public class RollDiceResponse {
+		
+		public int dieValues;
+		public int absolueValue;
 		
 	}
 }

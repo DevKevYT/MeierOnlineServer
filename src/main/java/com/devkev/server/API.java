@@ -23,6 +23,7 @@ import com.devkev.models.Response;
 import com.devkev.models.Response.ResponseCodes;
 import com.devkev.models.ResponseModels.CreateMatchResponse;
 import com.devkev.models.ResponseModels.JoinMatchResponse;
+import com.devkev.models.ResponseModels.RollDiceResponse;
 import com.devkev.server.Match.MatchLeaveReasons;
 
 
@@ -343,7 +344,11 @@ public class API extends Jooby {
 			String matchID = ctx.param("matchID").value();
 			
 			Client client = dbSupplier.getUser(clientID);
-			 
+			
+			if(client == null) {
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Unknown Client id"));
+			}
+			
 			if(client != null && getOnlineClientByUUID(clientID) == null) 
 				removeOnlineClient(client, MatchLeaveReasons.NEW_LOGIN);
 			
@@ -365,6 +370,7 @@ public class API extends Jooby {
 				JoinMatchResponse joinResponse = new JoinMatchResponse();
 				joinResponse.matchID = match.matchID;
 				joinResponse.sessionID = client.getSessionID();
+				joinResponse.currentTurn = match.getCurrentTurn().model;
 				
 				ArrayList<ClientModel> coll = new ArrayList<>();
 				for(Client c : match.getMembers()) 
@@ -533,9 +539,13 @@ public class API extends Jooby {
 			}
 			
 			c.extendSessionLifetime();
-			match.roll();
+			int absoluteRoll = match.roll();
 			
-			rsp.send(new Response("")); //Just send a generic success response
+			RollDiceResponse res = new RollDiceResponse();
+			res.absolueValue = absoluteRoll;
+			res.dieValues = match.getRollValue(absoluteRoll);
+			
+			rsp.send(new Response(res)); //Just send a generic success response
 		});
 		
 		//TODO handle abrupt connection loss (Currently causes n exception and corrupts the match with the problematic client)

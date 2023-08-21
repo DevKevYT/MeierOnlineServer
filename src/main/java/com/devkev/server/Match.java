@@ -15,7 +15,6 @@ import com.devkev.models.MatchEvents.JoinEvent;
 import com.devkev.models.MatchEvents.LeaveEvent;
 import com.devkev.models.MatchEvents.MatchEvent;
 import com.devkev.models.MatchEvents.MatchEvent.Scope;
-import com.devkev.models.MatchEvents.NewTurnDieValueEvent;
 import com.devkev.models.MatchEvents.NewTurnEvent;
 import com.devkev.models.MatchEvents.RoundCancelledEvent;
 import com.devkev.models.MatchEvents.RoundFinishEvent;
@@ -160,17 +159,18 @@ public class Match {
 		triggerEvent(event);
 	}
 	
-	public void roll() {
+	public int roll() {
 		
 		currentTurn.alreadyRolled = true;
 		
 		rollDice();
 		System.out.println("Rolled: " + actualAbsoluteValue);
+		return actualAbsoluteValue;
 		//Keep the previous values hidden
-		NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
-		roll.dieValues = getRollValue(actualAbsoluteValue);
-		roll.absolueValue = actualAbsoluteValue;
-		triggerEvent(roll, currentTurn);
+		//NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
+		//roll.dieValues = getRollValue(actualAbsoluteValue);
+		//roll.absolueValue = actualAbsoluteValue;
+		//triggerEvent(roll, currentTurn);
 	}
 	
 	public void next(int toldDieAbsoluteValue) throws Exception {

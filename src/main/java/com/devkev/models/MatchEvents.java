@@ -64,17 +64,17 @@ public interface MatchEvents {
 	}
 	
 	//Secret event, only the one receives who's turn it is
-	public class NewTurnDieValueEvent extends MatchEvent {
-
-		public int dieValues;
-		public int absolueValue;
-		
-		public NewTurnDieValueEvent(int eventID) {
-			super(eventID, "new-turn-die-value");
-			super.scope = Scope.SINGLE;
-		}
-		
-	}
+//	public class NewTurnDieValueEvent extends MatchEvent {
+//
+//		public int dieValues;
+//		public int absolueValue;
+//		
+//		public NewTurnDieValueEvent(int eventID) {
+//			super(eventID, "new-turn-die-value");
+//			super.scope = Scope.SINGLE;
+//		}
+//		
+//	}
 	
 	//Tell everyone who's turn it is now and 
 	public class NewTurnEvent extends MatchEvent {
