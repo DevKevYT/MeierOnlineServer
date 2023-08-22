@@ -468,7 +468,7 @@ public class API extends Jooby {
 			
 			if(ctx.param("challenge").isSet()) {
 				System.out.println("Trying to challenge");
-				match.challenge();
+				match.challenge(false);
 				c.extendSessionLifetime();
 			} else {
 				

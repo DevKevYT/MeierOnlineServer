@@ -96,6 +96,7 @@ public interface MatchEvents {
 	
 	public class RoundFinishEvent extends MatchEvent {
 		
+		public boolean callengeBecauseAFK = false;
 		public boolean isMeyer = false;
 		
 		public int toldDieAbsoluteValue;
@@ -122,6 +123,20 @@ public interface MatchEvents {
 		
 		public RoundCancelledEvent(int eventID) {
 			super(eventID, "match-cancelled");
+		}
+		
+	}
+	
+	public class TurnTimeoutEvent extends MatchEvent {
+
+		public ClientModel currentTurn; //the person who was afk
+		public ClientModel nextPerson; 
+		
+		//The person who's turn it was will just get skipped. 
+		//If there are only two persons in the match, the match gets finished and the afk dude is the loser
+		
+		public TurnTimeoutEvent(int eventID) {
+			super(eventID, "turn-timeout");
 		}
 		
 	}

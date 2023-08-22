@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.devkev.models.ClientModel;
@@ -22,6 +23,11 @@ import com.google.gson.Gson;
 
 //This class handles match logic for all connected clients
 public class Match {
+	
+	//There is always just one persons turn. 
+	private static final ScheduledExecutorService TIMEOUT_SCEDULER = Executors.newScheduledThreadPool(1);
+	
+	public static final int TURN_AFK_TIMEOUT = 30;
 	
 	//Reasons, why a client left an active match
 	public enum MatchLeaveReasons {
@@ -47,6 +53,8 @@ public class Match {
 	private boolean roundInProgress = false; //The match starts (initially), when the host triggers an endpoint or the last loser. If a round is in progress, nobody can join
 	
 	private Client currentTurn;
+	private ScheduledFuture<?> currentTurnTimeout;
+	
 	private String prevTurnClientID; //Cannot "swich" objects that easily like primitivy datatypes
 	
 	private int turnCounter = 0; //Always increment if someone turns. You can calculate the index of the actual client
@@ -157,6 +165,8 @@ public class Match {
 		event.prevClientID = "";
 		event.prevDisplayName = "";
 		triggerEvent(event);
+		
+		setTimeoutScedulerForCurrentTurn();
 	}
 	
 	public int roll() {
@@ -171,6 +181,35 @@ public class Match {
 		//roll.dieValues = getRollValue(actualAbsoluteValue);
 		//roll.absolueValue = actualAbsoluteValue;
 		//triggerEvent(roll, currentTurn);
+	}
+	
+	private void cancelTimeoutSceduler() {
+		if(currentTurnTimeout != null) {
+			System.out.println("Cancelling timeout sceduler for " + currentTurn.model.displayName);
+			if(currentTurnTimeout.cancel(true)) {
+				System.out.println("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
+			}
+		}
+	}
+	
+	private void setTimeoutScedulerForCurrentTurn() {
+		if(currentTurnTimeout != null) {
+			System.out.println("Cancelling timeout sceduler for " + currentTurn.model.displayName);
+			if(currentTurnTimeout.cancel(true)) {
+				System.out.println("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
+			}
+		}
+		
+		System.out.println("Timeout sceuled for " + currentTurn.model.displayName);
+		currentTurnTimeout = TIMEOUT_SCEDULER.schedule(() -> {
+			System.out.println("TIMEOUT!");
+			//If this gets triggered, before interruped. The person who's turn it is either passes the cup telling the truth or automatically loses
+			try {
+				challenge(true);
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}, TURN_AFK_TIMEOUT, TimeUnit.SECONDS);
 	}
 	
 	public void next(int toldDieAbsoluteValue) throws Exception {
@@ -203,13 +242,29 @@ public class Match {
 		event.toldDieRoll = getRollValue(toldDieAbsoluteValue);
 		
 		triggerEvent(event);
+		setTimeoutScedulerForCurrentTurn();
 	}
 	
 	//This function can make a client lose! Calling this function always ends the current round!
 	//TODO How about the case someone lies, but the value is actually higher? Should he win instead? Also make fun rules
-	public void challenge() {
+	//If timeout is true, the callenge was initiated by someone being afk
+	public void challenge(boolean timeout) {
 		
 		Client challenger = getMemberByUUID(prevTurnClientID);
+		
+		//Just cancel the match, because someone was afk! Trigger a cancel round event. Nobody lost or won TODO The afk player gets a lose point!
+		if(challenger == null && timeout) {
+			currentTurn = getHost();
+			endRound(getHost());
+			
+			RoundCancelledEvent event = new RoundCancelledEvent(getMostrecentEventID());
+			event.reason = "The person who";
+			event.newTurn = currentTurn.model;
+			triggerEvent(event);
+			
+			return;
+		}
+		
 		Client winner;
 		Client loser;
 		
@@ -232,6 +287,7 @@ public class Match {
 		
 		
 		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
+		event.callengeBecauseAFK = timeout;
 		event.actualDieAbsoluteValue = actualAbsoluteValue;
 		event.actualDieRoll = getRollValue(actualAbsoluteValue);
 		event.winner = winner.model;
@@ -246,6 +302,7 @@ public class Match {
 		System.out.println("The round finishes! " + currentTurn.model.displayName + " drinks and starts the next round!");
 		
 		endRound(loser);
+		cancelTimeoutSceduler();
 	}
 	
 	private void endRound(Client firstTurn) {

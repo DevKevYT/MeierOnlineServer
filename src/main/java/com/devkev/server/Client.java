@@ -2,6 +2,10 @@ package com.devkev.server;
 
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+
 
 import org.jooby.Sse;
 
@@ -21,6 +25,7 @@ public class Client {
 	public Match currentMatch;
 	
 	public Sse emitter; //The emitter associated with the current session ID
+	
 	
 	public boolean lostConnection = false;
 	public int lastEventID = 0;
