@@ -46,6 +46,10 @@ public class API extends Jooby {
 		
 		deleteExpiredClients.scheduleAtFixedRate(() -> {
 			try {
+				//idle mode
+				if(onlineClients.size() == 0 && Match.MATCHES.size() == 0) {
+					return;
+				}
 				
 				//Handle invalid sessions. They are automatically kicked from the match but receive a sse event informing about an expired session
 				synchronized (onlineClients) {
