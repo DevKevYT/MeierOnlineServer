@@ -159,8 +159,8 @@ public class Match {
 		roundInProgress = true;
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
-		event.clientID = host.model.uuid;
-		event.displayName = host.model.displayName;
+		event.clientID = currentTurn.model.uuid;
+		event.displayName = currentTurn.model.displayName;
 		event.streak = 0;
 		event.prevClientID = "";
 		event.prevDisplayName = "";
@@ -312,6 +312,10 @@ public class Match {
 		streak = 0;
 		roundInProgress = false;
 		prevTurnClientID = "";
+		
+		for(Client c : members) {
+			c.alreadyRolled = false;
+		}
 	}
 	
 	public int getCurrentToldAbsoluteRoll() {
