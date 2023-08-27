@@ -382,8 +382,11 @@ public class Match {
 		leave.clientID = client.model.uuid;
 		leave.displayName = client.model.displayName;
 		leave.reason = reason;
+		
 		ArrayList<ClientModel> leftOver = new ArrayList<>();
-		for(Client c : getMembers()) leftOver.add(c.model);
+		for(Client c : getMembers()) {
+			if(!c.model.uuid.equals(client.model.uuid)) leftOver.add(c.model);
+		}
 		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);
 		
 		triggerEvent(leave);
