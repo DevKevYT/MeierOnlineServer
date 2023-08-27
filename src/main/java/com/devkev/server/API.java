@@ -198,7 +198,7 @@ public class API extends Jooby {
 	}
 	
 	{
-		securePort(5555);
+		securePort(6969);
 		
 		err((req, rsp, err) -> {
 			
