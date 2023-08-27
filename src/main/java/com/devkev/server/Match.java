@@ -360,6 +360,7 @@ public class Match {
 		JoinEvent event = new JoinEvent(getMostrecentEventID());
 		event.clientID = client.model.uuid;
 		event.displayName = client.model.displayName;
+		event.currentTurnID = currentTurn.model.uuid;
 		
 		ArrayList<ClientModel> members = new ArrayList<>();
 		for(Client c : getMembers()) members.add(c.model);
@@ -381,7 +382,6 @@ public class Match {
 		leave.clientID = client.model.uuid;
 		leave.displayName = client.model.displayName;
 		leave.reason = reason;
-		
 		ArrayList<ClientModel> leftOver = new ArrayList<>();
 		for(Client c : getMembers()) leftOver.add(c.model);
 		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);

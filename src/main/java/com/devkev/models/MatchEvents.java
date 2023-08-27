@@ -32,6 +32,7 @@ public interface MatchEvents {
 		
 		public String clientID;
 		public String displayName;
+		public String currentTurnID;
 		public ClientModel[] currentMembers;
 		
 		public JoinEvent(int eventID) {
@@ -44,6 +45,7 @@ public interface MatchEvents {
 		public String displayName;
 		public String clientID;
 		public ClientModel[] currentMembers; //Members without the one who just left
+		
 		public MatchLeaveReasons reason;
 		
 		public LeaveEvent(int eventID) {
