@@ -201,11 +201,12 @@ public class API extends Jooby {
 		securePort(6969);
 		
 		err((req, rsp, err) -> {
-			
+			//Sende immer den Status 200. Das sollte manche verdreckten Bots verwirren. Ein Mensch sollt aus der Fehlernachricht schlau werden
 			rsp.header("content-type", "text/json; charset=utf-8");
 			rsp.header("Access-Control-Allow-Origin", "*");
-			
-		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred: " + err.getMessage()));
+			logger.debug("Connection from: " + req.ip());
+			rsp.status(200);
+		    rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "An unhandled server error occurred " + err.getMessage()));
 		});
 		
 		use("*", new CorsHandler(new Cors()));
@@ -556,7 +557,7 @@ public class API extends Jooby {
 			String session = ctx.param("sessionID").value();
 			Client c = getOnlineClientBySession(session);
 			
-			//TODO don't instantly close the connection. wait for a reconnect for example when the user refreshes the browser or has a poor internet connection.
+			//TODO don't instantly close the connection. wait for a reconnect for example when the user refreshes the browser or has a poor internet connection. (It is possible, just wait for a heartbeat connect from the same user)
 			sse.onClose(() -> {
 				if(c != null) {
 					

@@ -10,6 +10,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.jooby.Sse.Event;
+
 import com.devkev.models.ClientModel;
 import com.devkev.models.MatchEvents.HostPromotion;
 import com.devkev.models.MatchEvents.JoinEvent;
@@ -467,7 +469,7 @@ public class Match {
 		if(c.emitter != null && !c.lostConnection) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
 				
-				System.out.println("Failed to send event to client: " + c.model.displayName);
+				System.out.println("Failed to send event to client: " + c.model.displayName + " client lost the connection!");
 				
 				c.lastEventID = getMostrecentEventID();
 				c.lostConnection = true;
@@ -481,13 +483,14 @@ public class Match {
 					ArrayList<MatchEvent> collected = new ArrayList<MatchEvent>(); 
 					for(int i = c.lastEventID; i < getMostrecentEventID(); i++) {
 						System.out.println("Resending event " + i + " to client " + c.model.displayName);
-						collected.add(eventQueue.get(i));
+						if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
+							if(i == 0) {
+								//Only the first event should be send. Otherwise, the client would be confused. Send the rest
+								c.lostConnection = false;
+							}
+						}
 					}
 					
-					if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
-						System.out.println("Client " + c.model.displayName  + " reconnected!");
-						c.lostConnection = false;
-					}
 					
 				}, 0, 1, TimeUnit.SECONDS);
 				
