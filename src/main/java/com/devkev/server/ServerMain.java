@@ -2,11 +2,13 @@ package com.devkev.server;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Scanner;
 import java.util.function.Supplier;
 
 import org.jooby.Jooby;
 
 import com.devkev.database.DBConnection;
+import com.devkev.devscript.raw.Process;
 
 public class ServerMain {
 	
@@ -33,6 +35,26 @@ public class ServerMain {
 				return new API(DB_CON);
 			}
 		});
+		
+		new Thread(() -> {
+			Scanner s = new Scanner(System.in);
+			
+			Process interpreter = new Process(true);
+			interpreter.clearLibraries();
+			interpreter.includeLibrary(new Commands());
+			interpreter.addSystemOutput();
+			
+			try {
+				while(true) {
+					String command = s.nextLine();
+					interpreter.execute(command, false);
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+			} finally {
+				s.close();
+			}
+		}, "command-line").start();
 	}
 
 }
