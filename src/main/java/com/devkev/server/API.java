@@ -543,7 +543,7 @@ public class API extends Jooby {
 			}
 			//Start the match and tell eneryone who's turn it is. However people can still join and leave
 			if(match.getMembers().size() <= 1) {
-				rsp.send(new ErrorResponse("", 100, "Starting the match alone is a bit boring, isn't it? Wait for your friends to join first"));
+				rsp.send(new ErrorResponse("", ResponseCodes.WAIT_FOR_OTHERS_TO_JOIN, "Starting the match alone is a bit boring, isn't it? Wait for your friends to join first"));
 				return;
 			}
 			
