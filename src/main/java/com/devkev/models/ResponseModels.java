@@ -26,4 +26,11 @@ public interface ResponseModels {
 		public int absolueValue;
 		
 	}
+	
+	public class ServerInfoResponse {
+		
+		public int playersPlaying;
+		public int matchesInProgress;
+		
+	}
 }

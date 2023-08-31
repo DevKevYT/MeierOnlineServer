@@ -24,6 +24,7 @@ import com.devkev.models.Response.ResponseCodes;
 import com.devkev.models.ResponseModels.CreateMatchResponse;
 import com.devkev.models.ResponseModels.JoinMatchResponse;
 import com.devkev.models.ResponseModels.RollDiceResponse;
+import com.devkev.models.ResponseModels.ServerInfoResponse;
 import com.devkev.server.Match.MatchLeaveReasons;
 
 
@@ -238,8 +239,21 @@ public class API extends Jooby {
 			rsp.send(new Response(client.model));
 		});
 		
+		//Reports, how many players are online, what server version is running (coming soon) and how many matches are in progress
+		get("/api/serverinfo", (ctx, rsp) -> {
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "GET");
+			
+			ServerInfoResponse info = new ServerInfoResponse();
+			info.matchesInProgress = Match.MATCHES.size();
+			info.playersPlaying = onlineClients.size();
+			
+			rsp.send(new Response(info));
+		});
+		
 		get("/api/user/get/{clientID}", (ctx, rsp) -> {
-			ctx.accepts("multipart/form-data");
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
 			rsp.header("Access-Control-Allow-Origin", "*");
