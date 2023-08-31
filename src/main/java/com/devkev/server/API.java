@@ -485,7 +485,7 @@ public class API extends Jooby {
 				}
 				
 				if(absoluteValue < match.getCurrentToldAbsoluteRoll()) {
-					rsp.send(new ErrorResponse("", 100, "If you are already lying, you should really consider telling a higher number or are you intentionally trying to lose?"));
+					rsp.send(new ErrorResponse("", ResponseCodes.TOLD_DICE_VALUE_TOO_LOW, "If you are already lying, you should really consider telling a higher number or are you intentionally trying to lose?"));
 					return;
 				}
 				

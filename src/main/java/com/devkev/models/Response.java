@@ -10,6 +10,7 @@ public class Response {
 		public static final int UNKNOWN_FORM_DATA = 101;
 		public static final int INVALID_CLIENT_ID = 120;
 		public static final int INVALID_SESSION_ID = 122; //Unknown/invalid session id or expired session id
+		public static final int TOLD_DICE_VALUE_TOO_LOW = 130;
 	}
 	
 	public final int code;

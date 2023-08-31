@@ -9,6 +9,10 @@ public class ClientModel {
 	public String displayName;
 	public long expires;
 	
+	public int credits;
+	public int wins;
+	public int losses;
+	
 	private ClientModel() {}
 	
 	//Tries to create a model from a database resultset
