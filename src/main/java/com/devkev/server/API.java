@@ -219,11 +219,15 @@ public class API extends Jooby {
 			rsp.header("Access-Control-Allow-Methods", "POST");
 			
 			if(!ctx.param("displayName").isSet()) {
-				rsp.send(new ErrorResponse("", 100, "Required parameter: displayName missing"));
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_FORM_DATA, "Required parameter: displayName missing"));
 				return;
 			}
-			if(ctx.param("displayName").value().length() > 50) {
-				rsp.send(new ErrorResponse("", 100, "Your name should be less than 50 characters"));
+			if(ctx.param("displayName").value().length() > 20) {
+				rsp.send(new ErrorResponse("", ResponseCodes.USERNAME_TOO_LONG, "Your name should be less than 20 characters"));
+				return;
+			}
+			if(ctx.param("displayName").value().contains(" ")) {
+				rsp.send(new ErrorResponse("", ResponseCodes.USERNAME_CONTAINS_INVALID_CHARS, "Your name contains illegal characters"));
 				return;
 			}
 			
