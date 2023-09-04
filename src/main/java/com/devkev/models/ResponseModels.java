@@ -31,6 +31,7 @@ public interface ResponseModels {
 		
 		public int playersPlaying;
 		public int matchesInProgress;
+		public String version;
 		
 	}
 }

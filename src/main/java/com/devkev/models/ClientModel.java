@@ -10,8 +10,10 @@ public class ClientModel {
 	public long expires;
 	
 	public int credits;
-	public int wins;
-	public int losses;
+	
+	//These values are only used while a client is online to count the amount of wins and losses therefore these are not saved or fetched in the database
+	public int matchWins = 0;
+	public int matchLosses = 0;
 	
 	private ClientModel() {}
 	

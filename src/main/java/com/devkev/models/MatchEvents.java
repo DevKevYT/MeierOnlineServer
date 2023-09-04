@@ -65,26 +65,19 @@ public interface MatchEvents {
 		
 	}
 	
-	//Secret event, only the one receives who's turn it is
-//	public class NewTurnDieValueEvent extends MatchEvent {
-//
-//		public int dieValues;
-//		public int absolueValue;
-//		
-//		public NewTurnDieValueEvent(int eventID) {
-//			super(eventID, "new-turn-die-value");
-//			super.scope = Scope.SINGLE;
-//		}
-//		
-//	}
-	
 	//Tell everyone who's turn it is now and 
 	public class NewTurnEvent extends MatchEvent {
 
+		public int currentWins;
+		public int currentLosses;
 		public String clientID;
 		public String displayName;
+		
+		public int prevWins;
+		public int prevLosses;
 		public String prevClientID;
 		public String prevDisplayName;
+		
 		public int streak;
 		
 		public int toldDieAbsoluteValue;
@@ -111,6 +104,8 @@ public interface MatchEvents {
 		
 		public ClientModel loser;
 		public ClientModel winner;
+		
+		public int currentRound;
 		
 		public RoundFinishEvent(int eventID) {
 			super(eventID, "finish-match");

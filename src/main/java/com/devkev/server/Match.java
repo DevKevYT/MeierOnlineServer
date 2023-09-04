@@ -66,6 +66,8 @@ public class Match {
 	
 	private Client host;
 	
+	//Increments every time, a round is finished
+	private int currentRound = 0;
 	//Create a lookup table for the actual values and combinations
 	//Just add the numbers mathematically and the output is the second value
 	public static final HashMap<Integer, Integer> lookup = new HashMap<>();
@@ -160,11 +162,15 @@ public class Match {
 		roundInProgress = true;
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
+		event.currentLosses = currentTurn.model.matchLosses;
+		event.currentWins = currentTurn.model.matchWins;
 		event.clientID = currentTurn.model.uuid;
 		event.displayName = currentTurn.model.displayName;
 		event.streak = 0;
 		event.prevClientID = "";
 		event.prevDisplayName = "";
+		event.prevLosses = 0;
+		event.prevWins = 0;
 		triggerEvent(event);
 		
 		setTimeoutScedulerForCurrentTurn();
@@ -221,6 +227,8 @@ public class Match {
 		streak++;
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
+		event.prevLosses = currentTurn.model.matchLosses;
+		event.prevWins = currentTurn.model.matchWins;
 		event.prevClientID = currentTurn.model.uuid;
 		event.prevDisplayName = currentTurn.model.displayName;
 		event.streak = streak;
@@ -237,6 +245,8 @@ public class Match {
 		
 		currentTurn = next;
 		
+		event.currentLosses = next.model.matchLosses;
+		event.currentWins = next.model.matchWins;
 		event.clientID = next.model.uuid;
 		event.displayName = next.model.displayName;
 		event.toldDieAbsoluteValue = toldAbsoluteValue;
@@ -286,6 +296,10 @@ public class Match {
 			loser = challenger;
 		}
 		
+		currentRound++;
+		
+		winner.model.matchWins++;
+		loser.model.matchLosses++;
 		
 		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
 		event.callengeBecauseAFK = timeout;
@@ -297,6 +311,7 @@ public class Match {
 		event.streak = streak;
 		event.toldDieAbsoluteValue = toldAbsoluteValue;
 		event.toldDieRoll = getRollValue(toldAbsoluteValue);
+		event.currentRound = currentRound;
 		triggerEvent(event);
 		
 		//TODO round end message

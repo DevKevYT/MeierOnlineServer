@@ -30,6 +30,8 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
+	public static final String VERSION = "Beta 1.0.0";
+	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
@@ -249,6 +251,7 @@ public class API extends Jooby {
 			ServerInfoResponse info = new ServerInfoResponse();
 			info.matchesInProgress = Match.MATCHES.size();
 			info.playersPlaying = onlineClients.size();
+			info.version = VERSION;
 			
 			rsp.send(new Response(info));
 		});

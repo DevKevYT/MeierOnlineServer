@@ -30,6 +30,7 @@ public class Client {
 	//The timestamp when this session becomes invalid and the client is automatically kicked
 	private long sessionIdValid = 0;
 	
+	
 	public Client(ClientModel model) {
 		this.model = model;
 	}
