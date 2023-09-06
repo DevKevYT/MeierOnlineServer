@@ -28,7 +28,7 @@ public class Match {
 	//There is always just one persons turn. 
 	private static final ScheduledExecutorService TIMEOUT_SCEDULER = Executors.newScheduledThreadPool(1);
 	
-	public static final int TURN_AFK_TIMEOUT = 30;
+	public static final int TURN_AFK_TIMEOUT = 60;
 	
 	//Reasons, why a client left an active match
 	public enum MatchLeaveReasons {
