@@ -30,7 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "Beta 1.0.0";
+	public static final String VERSION = "Beta 1.0.1";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
