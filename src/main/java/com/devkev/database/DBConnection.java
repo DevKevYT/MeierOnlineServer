@@ -22,7 +22,7 @@ public class DBConnection {
 	private final Logger logger;
 	
 	private final ServerConfiguration configuration;
-	public static final long GUEST_USER_LIFESPAN = 60000L * 60L * 24; //1 tag
+	public static final long GUEST_USER_LIFESPAN = 7776000000L; //90 days / 2 months
 	
 	private Connection c;
 	
