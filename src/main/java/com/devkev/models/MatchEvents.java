@@ -138,6 +138,18 @@ public interface MatchEvents {
 		
 	}
 	
+	//Well, this is not really a match event, this event gets triggered when someone sends a reaction for somebody else's turn
+	public class ReactionEvent extends MatchEvent {
+
+		public ClientModel originator; //The person who sent the reaction
+		public String message; //The "emoji". But could also be "misused" to send messages
+		
+		public ReactionEvent(int eventID) {
+			super(eventID, "reaction");
+		}
+		
+	}
+	
 }
 
 

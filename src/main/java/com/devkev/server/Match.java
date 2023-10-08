@@ -18,6 +18,7 @@ import com.devkev.models.MatchEvents.LeaveEvent;
 import com.devkev.models.MatchEvents.MatchEvent;
 import com.devkev.models.MatchEvents.MatchEvent.Scope;
 import com.devkev.models.MatchEvents.NewTurnEvent;
+import com.devkev.models.MatchEvents.ReactionEvent;
 import com.devkev.models.MatchEvents.RoundCancelledEvent;
 import com.devkev.models.MatchEvents.RoundFinishEvent;
 import com.google.gson.Gson;
@@ -450,6 +451,13 @@ public class Match {
 			triggerEvent(event);
 		}
 		
+	}
+	
+	public void broadcastMessage(String message, Client originator) {
+		ReactionEvent evt = new ReactionEvent(getMostrecentEventID());
+		evt.originator = originator.model;
+		evt.message = message;
+		triggerEvent(evt);
 	}
 	
 	private int triggerEvent(MatchEvent event) {

@@ -30,7 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "Beta 1.0.1";
+	public static final String VERSION = "1.0.2";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
@@ -213,6 +213,39 @@ public class API extends Jooby {
 		});
 		
 		use("*", new CorsHandler(new Cors()));
+		
+		//Can be used to send "reactions" for all the players in the match
+		//Requires param: "sessionID" and "message"
+		post("/api/react/", (ctx, rsp) -> {
+			ctx.accepts("multipart/form-data");
+			
+			rsp.header("content-type", "text/json; charset=utf-8");
+			rsp.header("Access-Control-Allow-Origin", "*");
+			rsp.header("Access-Control-Allow-Methods", "POST");
+			
+			if(!ctx.param("sessionID").isSet()) {
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_FORM_DATA, "Required parameter: sessionID missing"));
+				return;
+			}
+			if(!ctx.param("message").isSet()) {
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_FORM_DATA, "Required parameter: message missing"));
+				return;
+			}
+			
+			Client c = getOnlineClientBySession(ctx.param("sessionID").value());
+			if(c == null) {
+				rsp.send(new ErrorResponse("", ResponseCodes.INVALID_SESSION_ID, "Invalid session id"));
+				return;
+			}
+			
+			Match m = c.currentMatch;
+			if(m == null) { //This should not happen
+				rsp.send(new ErrorResponse("", ResponseCodes.UNKNOWN_ERROR, "Someting bad happened that shouldn't happen. It's not your fault :("));
+				return;
+			}
+			
+			m.broadcastMessage(ctx.param("message").value(), c);
+		});
 		
 		post("/api/createguest/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
