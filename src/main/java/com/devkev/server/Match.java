@@ -406,7 +406,8 @@ public class Match {
 		}
 		leave.currentMembers = leftOver.toArray(new ClientModel[members.size()]);
 		
-		triggerEvent(leave);
+		if(leftOver.size() > 0) //Only trigger the event if theres other members. Otherwise nobody will receive the event anyways but the client who just left
+			triggerEvent(leave);
 		
 		for(Client m : members) {
 			if(m.model.uuid.equals(client.model.uuid)) {
