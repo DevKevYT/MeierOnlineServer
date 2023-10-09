@@ -202,6 +202,7 @@ public class API extends Jooby {
 	
 	{
 		securePort(6969);
+		port(0);
 		
 		err((req, rsp, err) -> {
 			//Sende immer den Status 200. Das sollte manche verdreckten Bots verwirren. Ein Mensch sollt aus der Fehlernachricht schlau werden
