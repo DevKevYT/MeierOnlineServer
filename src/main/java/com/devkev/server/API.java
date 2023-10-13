@@ -246,6 +246,7 @@ public class API extends Jooby {
 			}
 			
 			m.broadcastMessage(ctx.param("message").value(), c);
+			rsp.send(""); //That generic "ok" message
 		});
 		
 		post("/api/createguest/", (ctx, rsp) -> {
