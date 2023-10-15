@@ -217,7 +217,7 @@ public class API extends Jooby {
 		
 		//Can be used to send "reactions" for all the players in the match
 		//Requires param: "sessionID" and "message"
-		post("/api/react/", (ctx, rsp) -> {
+		post("/api/react/{sessionID}", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
