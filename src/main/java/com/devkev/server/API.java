@@ -30,7 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "1.0.3";
+	public static final String VERSION = "1.0.5";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
@@ -246,7 +246,7 @@ public class API extends Jooby {
 			}
 			
 			m.broadcastMessage(ctx.param("message").value(), c);
-			rsp.send(""); //That generic "ok" message
+			rsp.send(new Response("")); //That generic "ok" message
 		});
 		
 		post("/api/createguest/", (ctx, rsp) -> {
