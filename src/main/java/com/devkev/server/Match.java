@@ -10,6 +10,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.devkev.models.ClientModel;
 import com.devkev.models.MatchEvents.HostPromotion;
@@ -25,6 +27,8 @@ import com.google.gson.Gson;
 
 //This class handles match logic for all connected clients
 public class Match {
+	
+	private final Logger logger = LoggerFactory.getLogger(Match.class);
 	
 	//There is always just one persons turn. 
 	private static final ScheduledExecutorService TIMEOUT_SCEDULER = Executors.newScheduledThreadPool(1);
@@ -69,6 +73,11 @@ public class Match {
 	
 	//Increments every time, a round is finished
 	private int currentRound = 0;
+	
+	//If joined members are allowed to view tips (Useful if they are not very experienced in this game)
+	//If allowed clients need to have it set in their settings anyways
+	public boolean setting_includeHints = false;
+	
 	//Create a lookup table for the actual values and combinations
 	//Just add the numbers mathematically and the output is the second value
 	public static final HashMap<Integer, Integer> lookup = new HashMap<>();
@@ -157,7 +166,7 @@ public class Match {
 		return currentTurn;
 	}
 	
-	//Only the person whos turn it is currently can start the match
+	//Only the person whos turn it is currently should be allowed to call this function
 	public void start() {
 		prevTurnClientID = "";
 		roundInProgress = true;
@@ -178,40 +187,32 @@ public class Match {
 	}
 	
 	public int roll() {
-		
 		currentTurn.alreadyRolled = true;
-		
 		rollDice();
-		System.out.println("Rolled: " + actualAbsoluteValue);
 		return actualAbsoluteValue;
-		//Keep the previous values hidden
-		//NewTurnDieValueEvent roll = new NewTurnDieValueEvent(getMostrecentEventID());
-		//roll.dieValues = getRollValue(actualAbsoluteValue);
-		//roll.absolueValue = actualAbsoluteValue;
-		//triggerEvent(roll, currentTurn);
 	}
 	
 	private void cancelTimeoutSceduler() {
 		if(currentTurnTimeout != null) {
-			System.out.println("Cancelling timeout sceduler for " + currentTurn.model.displayName);
+			logger.debug("Cancelling timeout sceduler for " + currentTurn.model.displayName);
 			if(currentTurnTimeout.cancel(true)) {
-				System.out.println("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
+				logger.warn("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
 			}
 		}
 	}
 	
 	private void setTimeoutScedulerForCurrentTurn() {
 		if(currentTurnTimeout != null) {
-			System.out.println("Cancelling timeout sceduler for " + currentTurn.model.displayName);
+			logger.debug("Cancelling timeout sceduler for " + currentTurn.model.displayName);
 			if(currentTurnTimeout.cancel(true)) {
-				System.out.println("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
+				logger.warn("Failed to cancel current turn task. The next person should get kicked. But it's not his fault :(");
 			}
 		}
 		
-		System.out.println("Timeout sceuled for " + currentTurn.model.displayName);
+		logger.info("Timeout sceuled for " + currentTurn.model.displayName);
 		currentTurnTimeout = TIMEOUT_SCEDULER.schedule(() -> {
-			System.out.println("TIMEOUT!");
-			//If this gets triggered, before interruped. The person who's turn it is either passes the cup telling the truth or automatically loses
+			
+			logger.info("Current turn " + currentTurn.model.displayName + " timed out after " + TURN_AFK_TIMEOUT + " seconds");
 			try {
 				challenge(true);
 			} catch(Exception e) {
@@ -280,19 +281,19 @@ public class Match {
 		Client winner;
 		Client loser;
 		
-		System.out.println("Trying to challenge " + toldAbsoluteValue + " from " + challenger.model.displayName +  " against " + actualAbsoluteValue + " from " + currentTurn.model.uuid);
+		logger.info("Trying to challenge " + toldAbsoluteValue + " from " + challenger.model.displayName +  " against " + actualAbsoluteValue + " from " + currentTurn.model.uuid);
 		
 		if(toldAbsoluteValue == actualAbsoluteValue) {
-			System.out.println(currentTurn.model.displayName + " lost! ");
+			logger.info(currentTurn.model.displayName + " lost! ");
 			winner = challenger;
 			loser = currentTurn;
 		} else if(toldAbsoluteValue < actualAbsoluteValue) {
-			System.out.println(currentTurn.model.displayName + " should lose, but the told value is less than the actual! Second chance");
+			logger.info(currentTurn.model.displayName + " should lose, but the told value is less than the actual! Second chance");
 			
 			winner = challenger;
 			loser = currentTurn;
 		} else {
-			System.out.println(prevTurnClientID + " lost! ");
+			logger.info(prevTurnClientID + " lost! ");
 			winner = currentTurn;
 			loser = challenger;
 		}
@@ -315,8 +316,7 @@ public class Match {
 		event.currentRound = currentRound;
 		triggerEvent(event);
 		
-		//TODO round end message
-		System.out.println("The round finishes! " + currentTurn.model.displayName + " drinks and starts the next round!");
+		logger.info("The round (ID: " + matchID + ") finishes! " + currentTurn.model.displayName + " drinks and starts the next round!");
 		
 		endRound(loser);
 		cancelTimeoutSceduler();
@@ -393,7 +393,7 @@ public class Match {
 		client.removeSessionID();
 		client.lastEventID = 0;
 		
-		System.out.println("Client " + client.model.displayName + " removed from match. " + (members.size()-1) + " left!");
+		logger.info("Client " + client.model.displayName + " removed from match. " + (members.size()-1) + " left!");
 		
 		LeaveEvent leave = new LeaveEvent(getMostrecentEventID());
 		leave.clientID = client.model.uuid;
@@ -422,7 +422,7 @@ public class Match {
 		
 		//if no members are left, just remove itself
 		if(members.size() == 0) {
-			System.out.println("No members left. Removing. " + MATCHES.size() + " matches currently running");
+			logger.info("No members left. Removing. " + MATCHES.size() + " matches currently running");
 			deleteMatch();
 			return;
 		}
@@ -431,7 +431,7 @@ public class Match {
 			//Chose another one to be the host
 			Random r = new Random();
 			setHost(members.get(r.nextInt(members.size())));
-			System.out.println("The host left the match. " + getHost().model.displayName + " is the new host");
+			logger.info("The host left the match. " + getHost().model.displayName + " is the new host");
 			
 			HostPromotion promo = new HostPromotion(getMostrecentEventID());
 			promo.clientID = getHost().model.uuid;
@@ -441,7 +441,7 @@ public class Match {
 		
 		//Breche die aktuelle Runde einfach ab
 		if(client.model.uuid.equals(currentTurn.model.uuid)) {
-			System.out.println("The current turn left the match. Starting a new round");
+			logger.info("The current turn left the match. Starting a new round");
 			
 			currentTurn = getHost();
 			endRound(getHost());
@@ -487,12 +487,12 @@ public class Match {
 	}
 	
 	private void triggerEventForSingleClient(MatchEvent event, Client c) {
-		System.out.println("Sending event to " + c.model.displayName + new Gson().toJson(event));
+		logger.debug("Sending event to " + c.model.displayName + " with data: " + new Gson().toJson(event));
 		
 		if(c.emitter != null && !c.lostConnection) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
 				
-				System.out.println("Failed to send event to client: " + c.model.displayName + " client lost the connection!");
+				logger.warn("Failed to send event to client: " + c.model.displayName + " client lost the connection!");
 				
 				c.lastEventID = getMostrecentEventID();
 				c.lostConnection = true;

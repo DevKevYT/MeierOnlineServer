@@ -30,14 +30,12 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "1.0.5";
+	public static final String VERSION = "1.0.6";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
 	//All clients that are currenty online and being associated with a session id. 
-	//private ArrayList<Client> onlineClients = new ArrayList<>();
 	List<Client> onlineClients = Collections.synchronizedList(new ArrayList<Client>());
-	//Hashtable<String, Client> onlineClients = new Hashtable<String, Client>();
 	
 	private DBConnection dbSupplier;
 	
@@ -76,23 +74,23 @@ public class API extends Jooby {
 					Client c = new Client(ClientModel.create(set));
 					
 					if(c.model == null) {
-						System.out.println("Unable to create client model. This should not happen!");
+						logger.error("Unable to create client model from set " + set.toString() + ". This should not happen!");
 						continue;
 					}
 					
-					System.out.println(c.model.displayName + " is expired. Checking online status and deleting");
+					logger.info(c.model.displayName + " is expired. Checking online status and deleting");
 					
 					Client actual = getOnlineClientByUUID(c.model.uuid);
 					
 					if(actual != null) {
-						System.out.println("Client is currently online. Do nothing, cause lifespan just got extended. By the way, this should not happen! This could be a corrupted client!");
-						//dbSupplier.query("UPDATE user SET expires = " + (System.currentTimeMillis() + 60000) + " WHERE user_id = " + actual.model.uuid);
+						logger.warn("Client " + c.model.displayName + " is currently online. Do nothing, cause lifespan just got extended. By the way, this should not happen! This could be a corrupted client!");
 					} else {
-						System.out.println("Client is not online! Deleting!");
+						logger.info("Client is not online! Deleting!");
 						dbSupplier.deleteUser(c.model.uuid);
 					}
 				}
-				System.out.println("Sceduler finished. " + onlineClients.size() + " clients online, " + Match.MATCHES.size() + " matches in progress.");
+				
+				logger.debug("Sceduler finished. " + onlineClients.size() + " clients online, " + Match.MATCHES.size() + " matches in progress.");
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
@@ -113,9 +111,7 @@ public class API extends Jooby {
 			garbage.remove(0);
 		}
 		
-		//TODO optionally clean up corrupted hosts
-		System.out.println(onlineClients.size() + " clients are online");
-		System.out.println(Match.MATCHES.size() + " matches in progress");
+		logger.debug(onlineClients.size() + " clients are online, " + Match.MATCHES.size() + " matches in progress");
 		
 		for(Client c : onlineClients) {
 			if(c.getSessionID().equals(sessionID)) {
@@ -344,7 +340,6 @@ public class API extends Jooby {
 		
 		//Creates a match with a given 4 digit id other people can join
 		//Requires: clientID as form parameter
-		//TODO optional parameter to create a match without dice comparison. Good if you are in a round together
 		post("/api/match/create/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -520,7 +515,6 @@ public class API extends Jooby {
 			}
 			
 			if(ctx.param("challenge").isSet()) {
-				System.out.println("Trying to challenge");
 				match.challenge(false);
 				c.extendSessionLifetime();
 			} else {
@@ -591,7 +585,6 @@ public class API extends Jooby {
 			}
 			
 			if(!match.isRunning()) {
-				System.out.println("Starting the match!");
 				match.start();
 			}
 			
