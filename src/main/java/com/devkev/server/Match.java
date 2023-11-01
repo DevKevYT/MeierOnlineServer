@@ -21,6 +21,7 @@ import com.devkev.models.MatchEvents.NewTurnEvent;
 import com.devkev.models.MatchEvents.ReactionEvent;
 import com.devkev.models.MatchEvents.RoundCancelledEvent;
 import com.devkev.models.MatchEvents.RoundFinishEvent;
+import com.devkev.models.SentMatchEvent;
 import com.google.gson.Gson;
 
 //This class handles match logic for all connected clients
@@ -40,8 +41,6 @@ public class Match {
 		CONNECTION_LOSS, //aka "afk"
 		NEW_LOGIN
 	}
-	
-	private ScheduledExecutorService retry = Executors.newScheduledThreadPool(1);
 	
 	//Ensure every instance of a match is unique
 	public static final List<Match> MATCHES = Collections.synchronizedList(new ArrayList<Match>());
@@ -97,14 +96,14 @@ public class Match {
 		lookup.put(19, 44);
 		lookup.put(20, 55);
 		lookup.put(21, 66);
-		//Meyer!
+		//Meier!
 		lookup.put(22, 21);
 	}
 	
 	//Here goes the event queue. Everything that happens in this queue is being sent when syncing clients in this match using sse
 	//Every event has an ID and every event is saved until a match completes (TODO)
 	//The eventID is the index of the queue
-	ArrayList<MatchEvent> eventQueue = new ArrayList<MatchEvent>();
+	ArrayList<SentMatchEvent> eventQueue = new ArrayList<SentMatchEvent>();
 	
 	private Match() {
 		matchID = createUniqueID();
@@ -391,7 +390,6 @@ public class Match {
 		
 		client.currentMatch = null;
 		client.removeSessionID();
-		client.lastEventID = 0;
 		
 		System.out.println("Client " + client.model.displayName + " removed from match. " + (members.size()-1) + " left!");
 		
@@ -461,6 +459,18 @@ public class Match {
 		triggerEvent(evt);
 	}
 	
+	//Resends all relevant events for the given client events until the most recent one in order
+	public void resendEvents(int lastEvent, Client receiver) {
+		for(int i = lastEvent; i < eventQueue.size(); i++) {
+			//A bit more efficient than cheching every event against every client
+			if(eventQueue.get(i).getEventData().scope == MatchEvent.Scope.EVERYONE || 
+					(eventQueue.get(i).getEventData().scope == MatchEvent.Scope.SINGLE && eventQueue.get(i).hasReceived(receiver.model))) {
+				System.out.println("Resending relevant event " + i + "(" + eventQueue.get(i).getEventData().EVENT_ID + " -> " + receiver.model.displayName + ")");
+				triggerEventForSingleClient(eventQueue.get(i).getEventData(), receiver);
+			}
+		}
+	}
+	
 	private int triggerEvent(MatchEvent event) {
 		return triggerEvent(event, null);
 	}
@@ -473,13 +483,16 @@ public class Match {
 		if(target == null && event.scope == Scope.SINGLE) 
 			throw new IllegalAccessError("Cannot call the event " + event.EVENT_ID + " to a single client when this client is not being specified!");
 		
-		eventQueue.add(event);
 		
 		if(event.scope == Scope.EVERYONE) {
+			
+			eventQueue.add(new SentMatchEvent(event, members));
+			
 			for(Client c : members) {
 				triggerEventForSingleClient(event, c);
 			}
 		} else {
+			eventQueue.add(new SentMatchEvent(event, target));
 			triggerEventForSingleClient(event, target);
 		}
 		
@@ -489,38 +502,9 @@ public class Match {
 	private void triggerEventForSingleClient(MatchEvent event, Client c) {
 		System.out.println("Sending event to " + c.model.displayName + new Gson().toJson(event));
 		
-		if(c.emitter != null && !c.lostConnection) {
+		if(c.emitter != null) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
-				
-				System.out.println("Failed to send event to client: " + c.model.displayName + " client lost the connection!");
-				
-				c.lastEventID = getMostrecentEventID();
-				c.lostConnection = true;
-				
-				//If we fail to transmit, handle it like described above
-				java.util.concurrent.ScheduledFuture<?> future = retry.scheduleAtFixedRate(() -> {
-					if(!c.lostConnection)  return; //We can't cancel the event, so just do nothing for the remainder of the retry TODO better solution
-					
-					
-					//If we are successful here, set lostConnection to false
-					ArrayList<MatchEvent> collected = new ArrayList<MatchEvent>(); 
-					for(int i = c.lastEventID; i < getMostrecentEventID(); i++) {
-						System.out.println("Resending event " + i + " to client " + c.model.displayName);
-						if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
-							if(i == 0) {
-								//Only the first event should be send. Otherwise, the client would be confused. Send the rest
-								c.lostConnection = false;
-							}
-						}
-					}
-					
-					
-				}, 0, 1, TimeUnit.SECONDS);
-				
-				retry.schedule(() -> { //Ugly and not resource friendly solution, but does the trick
-					System.out.println("Cancelling timeout event for " + c.model.displayName);
-					future.cancel(true);
-				}, 10, TimeUnit.SECONDS);
+				System.out.println("Missed event. We should handle a connection loss here!");
 			}
 		}
 	}

@@ -30,7 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "1.0.5";
+	public static final String VERSION = "Beta 1.0.6";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
@@ -617,25 +617,35 @@ public class API extends Jooby {
 			sse.onClose(() -> {
 				if(c != null) {
 					
-					logger.debug("Logged user cut the connection");
-					logger.debug("Running cleanup routine for lost user ... " + c.model.displayName + " (" + c.model.uuid + ")");
+					logger.debug("Logged user (" + c.model.displayName + ") cut the connection. Waiting for reconnect!");
 					
-					if(c.currentMatch != null)
-						c.currentMatch.leave(c, MatchLeaveReasons.CONNECTION_LOSS);
-					
-					c.currentMatch = null;
-					c.removeSessionID();
-					c.emitter = null;
-					
-					removeOnlineClient(c, MatchLeaveReasons.CONNECTION_LOSS);
-					
+					c.handleConnectionLoss(() -> {
+						logger.debug("Running cleanup routine for lost user because he didnt reconnect in time ... " + c.model.displayName + " (" + c.model.uuid + ")");
+						//This is what happens if the client does not recover in time
+						if(c.currentMatch != null) {
+							
+							try {
+								c.currentMatch.leave(c, MatchLeaveReasons.CONNECTION_LOSS);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+						
+						c.currentMatch = null;
+						c.removeSessionID();
+						c.emitter = null;
+						
+						removeOnlineClient(c, MatchLeaveReasons.CONNECTION_LOSS);
+						logger.debug("Connection to user terminated");
+					});
 				}
-				
-				logger.debug("Connection to user terminated");
 			});
 			
-			//If the request has no valid session id associated, just drop the connection
-			if(c == null) {
+			
+			//The client reconnected! (He refreshed the page)
+			if(c != null && c.hasLostConnection()) {
+				c.handleConnectionRecover(sse);
+			} else if(c == null) {
 				sse.close();
 				return;
 			}
