@@ -5,19 +5,20 @@ import java.sql.SQLException;
 
 import com.devkev.database.DBConnection;
 import com.devkev.database.QueryParam;
+import com.devkev.models.Response.ExcludeFromSerialization;
 
 public class ClientModel {
 	
 	public String uuid;
 	public String displayName;
 	public long expires;
-	
 	public int coins;
 	
 	//These values are only used while a client is online to count the amount of wins and losses therefore these are not saved or fetched in the database
 	public int matchWins = 0;
 	public int matchLosses = 0;
 	
+	@ExcludeFromSerialization
 	private DBConnection dbSupplier;
 	
 	private ClientModel() {}
@@ -41,6 +42,7 @@ public class ClientModel {
 			model.dbSupplier = dbSupplier;
 			return model;
 		} catch(SQLException exception) {
+			exception.printStackTrace();
 			return null;
 		}
 	}

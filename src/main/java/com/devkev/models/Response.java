@@ -1,8 +1,24 @@
 package com.devkev.models;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class Response {
+	
+	//This annotation prevents fields with this annotation to be seraialized
+	//Used in the custom BUILDER field
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public @interface ExcludeFromSerialization
+	{
+	}
 	
 	public interface ResponseCodes {
 		public static final int SUCCESS = 0;
@@ -16,6 +32,19 @@ public class Response {
 		public static final int WAIT_FOR_OTHERS_TO_JOIN = 102;
 		
 	}
+	
+	private static Gson GSON = new GsonBuilder().addSerializationExclusionStrategy(new ExclusionStrategy() {
+		
+		@Override
+		public boolean shouldSkipField(FieldAttributes f) {
+			 return f.getAnnotation(ExcludeFromSerialization.class) != null;
+		}
+		
+		@Override
+		public boolean shouldSkipClass(Class<?> clazz) {
+			return false;
+		}
+	}).create();
 	
 	public final int code;
 	public final Object data;
@@ -31,6 +60,6 @@ public class Response {
 	}
 	
 	public String toString() {
-		return new Gson().toJson(this);
+		return GSON.toJson(this);
 	}
 }
