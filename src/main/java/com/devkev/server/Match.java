@@ -189,14 +189,17 @@ public class Match {
 		event.prevWins = 0;
 		triggerEvent(event);
 		
+		logger.info("STARTING ROUND " + currentRound + " MATCH: " + matchID);
+		
 		//Draw all the client "currentStakes" from the members and update the database. Leaving the match in progress will automatically make
 		//The client los his stake.
 		stakepot = 0;
 		
 		synchronized (members) {
 			for(Client c : members) {
-				stakepot += c.currentStake;
-				c.model.coins -= c.currentStake;
+				stakepot += (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
+				c.model.coins -= (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
+				
 				
 				//If an error occurs on one member, throw an exception and revert all changes to prevent coins getting lost
 				try {
@@ -212,8 +215,10 @@ public class Match {
 					stakepot = 0;
 					throw e;
 				}
+				logger.info("Drawing " + (c.currentStake >= minimumStake ? c.currentStake : minimumStake) + " from " + c.model.displayName + " Coins left: " + c.model.coins);
 			}
 		}
+		logger.info("Stake pot: " + stakepot + " The winner will get all!");
 		
 		setTimeoutScedulerForCurrentTurn();
 	}
