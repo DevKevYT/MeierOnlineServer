@@ -504,40 +504,7 @@ public class Match {
 		
 		if(c.emitter != null) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
-<<<<<<< HEAD
 				System.out.println("Missed event. We should handle a connection loss here!");
-=======
-				
-				logger.warn("Failed to send event to client: " + c.model.displayName + " client lost the connection!");
-				
-				c.lastEventID = getMostrecentEventID();
-				c.lostConnection = true;
-				
-				//If we fail to transmit, handle it like described above
-				java.util.concurrent.ScheduledFuture<?> future = retry.scheduleAtFixedRate(() -> {
-					if(!c.lostConnection)  return; //We can't cancel the event, so just do nothing for the remainder of the retry TODO better solution
-					
-					
-					//If we are successful here, set lostConnection to false
-					ArrayList<MatchEvent> collected = new ArrayList<MatchEvent>(); 
-					for(int i = c.lastEventID; i < getMostrecentEventID(); i++) {
-						System.out.println("Resending event " + i + " to client " + c.model.displayName);
-						if(!c.emitter.event(new Gson().toJson(collected)).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
-							if(i == 0) {
-								//Only the first event should be send. Otherwise, the client would be confused. Send the rest
-								c.lostConnection = false;
-							}
-						}
-					}
-					
-					
-				}, 0, 1, TimeUnit.SECONDS);
-				
-				retry.schedule(() -> { //Ugly and not resource friendly solution, but does the trick
-					System.out.println("Cancelling timeout event for " + c.model.displayName);
-					future.cancel(true);
-				}, 10, TimeUnit.SECONDS);
->>>>>>> branch 'main' of https://github.com/DevKevYT/MeyerOnlineServer.git
 			}
 		}
 	}

@@ -30,11 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-<<<<<<< HEAD
 	public static final String VERSION = "Beta 1.0.6";
-=======
-	public static final String VERSION = "1.0.6";
->>>>>>> branch 'main' of https://github.com/DevKevYT/MeyerOnlineServer.git
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
