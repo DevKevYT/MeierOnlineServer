@@ -1,0 +1,2 @@
+ALTER TABLE user 
+ADD coins INT DEFAULT 100;

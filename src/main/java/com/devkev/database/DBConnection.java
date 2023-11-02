@@ -66,13 +66,22 @@ public class DBConnection {
     	createSchema.close();
 	    
 	    //Create potentially missing tables
-	    Statement checkPhasingTable = connection.createStatement();
-	    checkPhasingTable.executeUpdate("CREATE TABLE IF NOT EXISTS user ("
+	    Statement checkUserTable = connection.createStatement();
+	    checkUserTable.executeUpdate("CREATE TABLE IF NOT EXISTS user ("
 			+ "user_id  VARCHAR(36) NOT NULL," //This is going to be a uuid
 			+ "display_name varchar(50) NOT NULL,"
 			+ "expires BIGINT NOT NULL,"
+			+ "coins INT NOT NULL DEFAULT 0,"
 			+ "PRIMARY KEY (user_id))");
-	    checkPhasingTable.close();
+	    checkUserTable.close();
+	    
+	    Statement checkSettingsTable = connection.createStatement();
+	    checkSettingsTable.executeUpdate("CREATE TABLE IF NOT EXISTS user_settings ("
+			+ "user_id VARCHAR(36) NOT NULL,"
+			+ "show_tips BIT DEFAULT 1,"
+			+ "sound BIT DEFAULT 1,"
+			+ "FOREIGN KEY (user_id) REFERENCES user(user_id))");
+	    checkSettingsTable.close();
 	    
 	    logger.debug("Check done");
 	}
