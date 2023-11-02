@@ -10,7 +10,6 @@ import java.util.concurrent.TimeUnit;
 import org.jooby.Sse;
 
 import com.devkev.models.ClientModel;
-import com.devkev.server.Match.MatchLeaveReasons;
 
 //This class is a "virtual" representation of the actual client and is constantly being synced with the server
 public class Client {
@@ -26,6 +25,9 @@ public class Client {
 	//Live data.
 	private String sessionID;
 	public Match currentMatch;
+	
+	//Default is 10 but the client can set more if he want with the endpoint /api/user/setstake/ before a new round starts
+	public int currentStake = 10;
 	
 	public Sse emitter; //The emitter associated with the current session ID
 	

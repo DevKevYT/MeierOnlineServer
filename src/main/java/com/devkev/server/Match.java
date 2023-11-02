@@ -1,5 +1,6 @@
 package com.devkev.server;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -72,6 +73,11 @@ public class Match {
 	
 	//Increments every time, a round is finished
 	private int currentRound = 0;
+	
+	//Stake pot
+	private int stakepot = 0;
+	//TODO The last loser might be able to change this value
+	private int minimumStake = 10;
 	
 	//If joined members are allowed to view tips (Useful if they are not very experienced in this game)
 	//If allowed clients need to have it set in their settings anyways
@@ -166,7 +172,8 @@ public class Match {
 	}
 	
 	//Only the person whos turn it is currently should be allowed to call this function
-	public void start() {
+	//This function also draws the stake coins from all members to the "stake pot"
+	public void start() throws SQLException {
 		prevTurnClientID = "";
 		roundInProgress = true;
 		
@@ -181,6 +188,32 @@ public class Match {
 		event.prevLosses = 0;
 		event.prevWins = 0;
 		triggerEvent(event);
+		
+		//Draw all the client "currentStakes" from the members and update the database. Leaving the match in progress will automatically make
+		//The client los his stake.
+		stakepot = 0;
+		
+		synchronized (members) {
+			for(Client c : members) {
+				stakepot += c.currentStake;
+				c.model.coins -= c.currentStake;
+				
+				//If an error occurs on one member, throw an exception and revert all changes to prevent coins getting lost
+				try {
+					c.model.updateModel();
+				} catch (SQLException e) {
+					
+					logger.error("Failed to update database entry at user " + c.model.displayName + ". Database and RAM data might be out of sync for other members, but will be corrected again later.");
+					
+					for(Client failover : members) {
+						failover.model.coins += failover.currentStake;
+					}
+					
+					stakepot = 0;
+					throw e;
+				}
+			}
+		}
 		
 		setTimeoutScedulerForCurrentTurn();
 	}
@@ -302,6 +335,14 @@ public class Match {
 		winner.model.matchWins++;
 		loser.model.matchLosses++;
 		
+		//Grant the winner all his coins!
+		winner.model.coins += stakepot;
+		try {
+			winner.model.updateModel();
+		} catch (SQLException e) {
+			logger.error("Failed to update winner database coins. RAM and DB out of sync but will be corrected later");
+		}
+		
 		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
 		event.callengeBecauseAFK = timeout;
 		event.actualDieAbsoluteValue = actualAbsoluteValue;
@@ -387,6 +428,12 @@ public class Match {
 	
 	//TODO pass the turn, if the person who's turn it was leaves
 	public void leave(Client client, MatchLeaveReasons reason) throws Exception {
+		
+		try {
+			client.model.updateModel();
+		} catch(SQLException exception) {
+			logger.error("Failed to sync RAM and DB data for client: " + client.model.displayName + ": " + exception.getMessage());
+		}
 		
 		client.currentMatch = null;
 		client.removeSessionID();

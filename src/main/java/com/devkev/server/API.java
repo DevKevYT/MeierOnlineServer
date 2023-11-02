@@ -30,7 +30,7 @@ import com.devkev.server.Match.MatchLeaveReasons;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "Beta 1.0.6";
+	public static final String VERSION = "Beta 1.0.7";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
@@ -71,7 +71,7 @@ public class API extends Jooby {
 				ResultSet set = dbSupplier.query("SELECT * FROM user WHERE expires < ?", QueryParam.of(System.currentTimeMillis()));
 				
 				while(set.next()) {
-					Client c = new Client(ClientModel.create(set));
+					Client c = new Client(ClientModel.create(dbSupplier, set));
 					
 					if(c.model == null) {
 						logger.error("Unable to create client model from set " + set.toString() + ". This should not happen!");
@@ -546,8 +546,12 @@ public class API extends Jooby {
 			rsp.send(new Response("")); //Just send a generic success response
 		});
 		
-		//Requires: sessionID of the host
-		//If the match has not been started yet, calling this endpoint as host or "last loser" will start a new round
+		/**
+		 * Requires: sessionID of the host
+		 * If the match has not been started yet, calling this endpoint as host or "last loser" will start a new round and
+		 * calling this endpoint to start a round AUTOMATICALLY draws the minimum, or set stake coins from ALL currently joined members and
+		 * The winner will get all the coins from that "pot"
+		*/
 		post("/api/match/roll/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			

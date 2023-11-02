@@ -94,7 +94,7 @@ public class DBConnection {
 				QueryParam.of(uuid),
 				QueryParam.of(displayName));
 		
-		return new Client(ClientModel.create(query("SELECT * FROM user WHERE user_id = '" + uuid + "'")));
+		return new Client(ClientModel.create(this, query("SELECT * FROM user WHERE user_id = '" + uuid + "'")));
 	}
 	
 	//TODO create a sceduled future (Every 5 minutes)
@@ -114,7 +114,7 @@ public class DBConnection {
 	}
 	
 	public Client getUser(String uuid) throws SQLException {
-		ClientModel model = ClientModel.create(query("SELECT * FROM user WHERE user_id = ?", QueryParam.of(uuid)));
+		ClientModel model = ClientModel.create(this, query("SELECT * FROM user WHERE user_id = ?", QueryParam.of(uuid)));
 		return model != null ? new Client(model) : null;
 	}
 	

@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.devkev.database.DBConnection;
+import com.devkev.database.QueryParam;
 
 public class ClientModel {
 	
@@ -17,14 +18,19 @@ public class ClientModel {
 	public int matchWins = 0;
 	public int matchLosses = 0;
 	
+	private DBConnection dbSupplier;
+	
 	private ClientModel() {}
 	
 	//Tries to create a model from a database resultset
-	public static ClientModel create(ResultSet resultSet) throws SQLException {
+	/**@param dbSupplier - The database supplier, if you want to update this model later in the database. If not, this argument can be null*/
+	public static ClientModel create(DBConnection dbSupplier, ResultSet resultSet) throws SQLException {
+		
 		if(resultSet.isBeforeFirst()) {
 			if(!resultSet.next()) 
 				return null;
 		}
+		
 		
 		try {
 			ClientModel model = new ClientModel();
@@ -32,15 +38,23 @@ public class ClientModel {
 			model.displayName = resultSet.getString("display_name");
 			model.expires = resultSet.getLong("expires");
 			model.coins = resultSet.getInt("coins");
+			model.dbSupplier = dbSupplier;
 			return model;
 		} catch(SQLException exception) {
 			return null;
 		}
 	}
 	
-	/**Updates relevant changes to the model in the database (Currently settings and */
-	public void updateModel(DBConnection database) {
+	/**Renders relevant changes to the model in the database (Currently settings and coins)
+	 * @throws SQLException */
+	public void updateModel() throws SQLException {
 		
+		if(dbSupplier == null) {
+			System.out.println("WARNING: Unable to update user " + uuid + " because this model was created without a database supplier! Changes not saved in the database");
+			return;
+		}
+			
+		dbSupplier.queryUpdate("UPDATE user SET coins = ? WHERE user_id = '" + uuid + "'", QueryParam.of(coins));
 	}
 	
 }
