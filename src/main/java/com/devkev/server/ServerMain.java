@@ -1,7 +1,11 @@
 package com.devkev.server;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Properties;
 import java.util.function.Supplier;
 
 import org.jooby.Jooby;
@@ -13,7 +17,10 @@ public class ServerMain {
 	public static ServerConfiguration SERVER_CONFIG;
 	public static DBConnection DB_CON;
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
+		
+		if(args.length == 0)
+			throw new IllegalArgumentException("Missing configuration file");
 		
 		SERVER_CONFIG = new ServerConfiguration(new File(args[0]));
 		try {
