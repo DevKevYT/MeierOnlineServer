@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.devkev.models.ClientModel;
+import com.devkev.models.Response;
 import com.devkev.models.MatchEvents.HostPromotion;
 import com.devkev.models.MatchEvents.JoinEvent;
 import com.devkev.models.MatchEvents.LeaveEvent;
@@ -552,7 +553,7 @@ public class Match {
 	}
 	
 	private void triggerEventForSingleClient(MatchEvent event, Client c) {
-		logger.debug("Sending event to " + c.model.displayName + " with data: " + new Gson().toJson(event));
+		logger.debug("Sending event to " + c.model.displayName + " with data: " + Response.GSON.toJson(event));
 		
 		if(c.emitter != null) {
 			if(c.emitter.event(event.toString()).id(getMostrecentEventID()).name(event.eventName).send().isCompletedExceptionally()) {
