@@ -23,7 +23,7 @@ public interface MatchEvents {
 		}
 		
 		public String toString() {
-			return new Gson().toJson(this);
+			return Response.GSON.toJson(this);
 		}
 		
 	}

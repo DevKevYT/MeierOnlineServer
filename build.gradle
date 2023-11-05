@@ -24,7 +24,8 @@ dependencies {
     // Use JUnit test framework
 	testImplementation 'junit:junit:4.12'
     
-	compile fileTree(dir: 'libs', include: ['*.jar']);
+    //Not used by now
+	//compile fileTree(dir: 'libs', include: ['*.jar']);
    
    	//------------- API -------------
 	implementation 'com.google.code.gson:gson:2.8.6'

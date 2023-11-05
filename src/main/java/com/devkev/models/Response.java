@@ -35,7 +35,7 @@ public class Response {
 		
 	}
 	
-	private static Gson GSON = new GsonBuilder().addSerializationExclusionStrategy(new ExclusionStrategy() {
+	public static Gson GSON = new GsonBuilder().addSerializationExclusionStrategy(new ExclusionStrategy() {
 		
 		@Override
 		public boolean shouldSkipField(FieldAttributes f) {
