@@ -30,6 +30,8 @@ public class Response {
 		public static final int USERNAME_TOO_LONG = 110;
 		public static final int USERNAME_CONTAINS_INVALID_CHARS = 111;
 		public static final int WAIT_FOR_OTHERS_TO_JOIN = 102;
+		public static final int NOT_ENOUGH_CREDITS_FOR_MATCH_CREATION = 103;
+		public static final int NOT_ENOUGH_CREDITS_FOR_MATCH_JOIN = 104;
 		
 	}
 	

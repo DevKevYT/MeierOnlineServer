@@ -146,7 +146,7 @@ public class API extends Jooby {
 		
 		synchronized (Match.MATCHES) {
 			for(Match m : Match.MATCHES) {
-				if(m.matchID.equals(matchID))
+				if(m.getMatchID().equals(matchID))
 					return m;
 			}
 			return null;
@@ -272,7 +272,7 @@ public class API extends Jooby {
 			rsp.send(new Response(client.model));
 		});
 		
-		//Reports, how many players are online, what server version is running (coming soon) and how many matches are in progress
+		//Reports, how many players are online, what server version is running and how many matches are in progress
 		get("/api/serverinfo", (ctx, rsp) -> {
 			
 			rsp.header("content-type", "text/json; charset=utf-8");
@@ -336,10 +336,15 @@ public class API extends Jooby {
 			rsp.send(new Response("")); //Send a generic "ok" message
 		});
 		
-		//Once the client joins a match, or creates a match, he is being put in the "online" list and being constantly synced with the actual client
-		
-		//Creates a match with a given 4 digit id other people can join
-		//Requires: clientID as form parameter
+		/**
+		 * Creates a match and generates a unique 4-digit id for other people to join
+		 * Required Parameters: 
+		 *  - clientID
+		 * Optional Parameters:
+		 *  - option_disableCoins: (boolean, true if set to any value or "true")
+		 *  - option_gameMode: 1 or 2 (1 means, set stake at every round start, 2 means, increase the stake for every turn in one round)
+		 *  - option_allowHints: (boolean) If the user is allowed to play by hints (coming soon)
+		 */
 		post("/api/match/create/", (ctx, rsp) -> {
 			ctx.accepts("multipart/form-data");
 			
@@ -367,15 +372,29 @@ public class API extends Jooby {
 				return;
 			}
 			
+			boolean stakeEnabled = !ctx.param("option_disableCoins").isSet();
+			
+			//TODO check if the client has enough credits. Just use a generic value for now.
+			//Match options are passed with this endoint in the future
+			if(c.model.coins < Match.MINIMUM_STAKE && stakeEnabled) {
+				rsp.send(new ErrorResponse("", ResponseCodes.NOT_ENOUGH_CREDITS_FOR_MATCH_CREATION, "You need at least 10 coins, to create this match. Either disable stake or get more coins!"));
+				return;
+			}
+			
+			MatchOptions options = new MatchOptions();
+			options.useStake = stakeEnabled;
+			options.allowHints = true;
+			options.setStakeAtRoundStart = true;
+			
+			Match m = Match.createMatch(c, options);
 			c.generateUniqueSessionID();
 			
-			Match m = Match.createMatch(c);
 			onlineClients.add(c);
 			dbSupplier.extendGuestUserLifespan(c);
 			
 			CreateMatchResponse res = new CreateMatchResponse();
 			res.clientID = c.model.uuid;
-			res.matchID = m.matchID;
+			res.matchID = m.getMatchID();
 			res.displayName = c.model.displayName;
 			res.sessionID = c.getSessionID();
 			
@@ -414,13 +433,18 @@ public class API extends Jooby {
 					return;
 				}
 				
+				if(client.model.coins < Match.MINIMUM_STAKE && match.getOptions().useStake) {
+					rsp.send(new ErrorResponse("", ResponseCodes.NOT_ENOUGH_CREDITS_FOR_MATCH_JOIN, "You need at least the amount of the minimum stake coins for this match, you need more credits to join this match!"));
+					return;
+				}
+				
 				match.join(client);
 				onlineClients.add(client);
 				dbSupplier.extendGuestUserLifespan(client);
 				client.generateUniqueSessionID();
 				
 				JoinMatchResponse joinResponse = new JoinMatchResponse();
-				joinResponse.matchID = match.matchID;
+				joinResponse.matchID = match.getMatchID();
 				joinResponse.sessionID = client.getSessionID();
 				joinResponse.currentTurn = match.getCurrentTurn().model;
 				
@@ -637,7 +661,6 @@ public class API extends Jooby {
 					});
 				}
 			});
-			
 			
 			//The client reconnected! (He refreshed the page)
 			if(c != null && c.hasLostConnection()) {

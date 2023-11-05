@@ -30,13 +30,6 @@ import com.google.gson.Gson;
 //This class handles match logic for all connected clients
 public class Match {
 	
-	private final Logger logger = LoggerFactory.getLogger(Match.class);
-	
-	//There is always just one persons turn. 
-	private static final ScheduledExecutorService TIMEOUT_SCEDULER = Executors.newScheduledThreadPool(1);
-	
-	public static final int TURN_AFK_TIMEOUT = 60;
-	
 	//Reasons, why a client left an active match
 	public enum MatchLeaveReasons {
 		UNKNOWN,
@@ -47,13 +40,25 @@ public class Match {
 		NEW_LOGIN
 	}
 	
+	//Static data
+	private final Logger logger = LoggerFactory.getLogger(Match.class);
+	
+	//There is always just one persons turn. 
+	private static final ScheduledExecutorService TIMEOUT_SCEDULER = Executors.newScheduledThreadPool(1);
+	
+	public static final int TURN_AFK_TIMEOUT = 60;
+	public static final int MINIMUM_STAKE = 10;
+	
 	//Ensure every instance of a match is unique
 	public static final List<Match> MATCHES = Collections.synchronizedList(new ArrayList<Match>());
 	private static Random random = new Random();
 	private static final String matchIDChars = "123456789";
 	
-	//MAtch id is numeric, but there could be leading zeroes
+	private final MatchOptions options;
+	
 	public final String matchID;
+	
+	//Dynamic data
 	private ArrayList<Client> members = new ArrayList<>();
 	
 	private boolean roundInProgress = false; //The match starts (initially), when the host triggers an endpoint or the last loser. If a round is in progress, nobody can join
@@ -78,10 +83,6 @@ public class Match {
 	private int stakepot = 0;
 	//TODO The last loser might be able to change this value
 	private int minimumStake = 10;
-	
-	//If joined members are allowed to view tips (Useful if they are not very experienced in this game)
-	//If allowed clients need to have it set in their settings anyways
-	public boolean setting_includeHints = false;
 	
 	//Create a lookup table for the actual values and combinations
 	//Just add the numbers mathematically and the output is the second value
@@ -120,16 +121,17 @@ public class Match {
 	//The eventID is the index of the queue
 	ArrayList<SentMatchEvent> eventQueue = new ArrayList<SentMatchEvent>();
 	
-	private Match() {
+	private Match(MatchOptions options) {
 		matchID = createUniqueID();
+		this.options = options;
 		
 		synchronized (MATCHES) {
 			MATCHES.add(this);			
 		}
 	}
 	
-	public static Match createMatch(Client host) {
-		Match m = new Match();
+	public static Match createMatch(Client host, MatchOptions options) {
+		Match m = new Match(options);
 		m.host = host;
 		m.currentTurn = host;
 		m.members.add(host);
@@ -147,6 +149,14 @@ public class Match {
 			if(c.model.uuid.equals(uuid)) return c;
 		}
 		return null;
+	}
+	
+	public String getMatchID() {
+		return matchID;
+	}
+	
+	public MatchOptions getOptions() {
+		return options;
 	}
 	
 	public boolean allowedToStart(Client c) {
@@ -191,34 +201,40 @@ public class Match {
 		
 		logger.info("STARTING ROUND " + currentRound + " MATCH: " + matchID);
 		
-		//Draw all the client "currentStakes" from the members and update the database. Leaving the match in progress will automatically make
-		//The client los his stake.
-		stakepot = 0;
-		
-		synchronized (members) {
-			for(Client c : members) {
-				stakepot += (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
-				c.model.coins -= (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
-				
-				
-				//If an error occurs on one member, throw an exception and revert all changes to prevent coins getting lost
-				try {
-					c.model.updateModel();
-				} catch (SQLException e) {
+		if(options.useStake) {
+			
+			logger.info("STAKE ENABLED IN OPTIONS");
+			
+			//Draw all the client "currentStakes" from the members and update the database. Leaving the match in progress will automatically make
+			//The client los his stake.
+			stakepot = 0;
+			
+			synchronized (members) {
+				for(Client c : members) {
+					stakepot += (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
+					c.model.coins -= (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
 					
-					logger.error("Failed to update database entry at user " + c.model.displayName + ". Database and RAM data might be out of sync for other members, but will be corrected again later.");
 					
-					for(Client failover : members) {
-						failover.model.coins += failover.currentStake;
+					//If an error occurs on one member, throw an exception and revert all changes to prevent coins getting lost
+					try {
+						c.model.updateModel();
+					} catch (SQLException e) {
+						
+						logger.error("Failed to update database entry at user " + c.model.displayName + ". Database and RAM data might be out of sync for other members, but will be corrected again later.");
+						
+						for(Client failover : members) {
+							failover.model.coins += failover.currentStake;
+						}
+						
+						stakepot = 0;
+						throw e;
 					}
-					
-					stakepot = 0;
-					throw e;
+					logger.info("Drawing " + (c.currentStake >= minimumStake ? c.currentStake : minimumStake) + " from " + c.model.displayName + " Coins left: " + c.model.coins);
 				}
-				logger.info("Drawing " + (c.currentStake >= minimumStake ? c.currentStake : minimumStake) + " from " + c.model.displayName + " Coins left: " + c.model.coins);
 			}
+			logger.info("Stake pot: " + stakepot + " The winner will get all!");
 		}
-		logger.info("Stake pot: " + stakepot + " The winner will get all!");
+		
 		
 		setTimeoutScedulerForCurrentTurn();
 	}
@@ -340,12 +356,14 @@ public class Match {
 		winner.model.matchWins++;
 		loser.model.matchLosses++;
 		
-		//Grant the winner all his coins!
-		winner.model.coins += stakepot;
-		try {
-			winner.model.updateModel();
-		} catch (SQLException e) {
-			logger.error("Failed to update winner database coins. RAM and DB out of sync but will be corrected later");
+		if(options.useStake) {
+			//Grant the winner all his coins!
+			winner.model.coins += stakepot;
+			try {
+				winner.model.updateModel();
+			} catch (SQLException e) {
+				logger.error("Failed to update winner database coins. RAM and DB out of sync but will be corrected later");
+			}
 		}
 		
 		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
