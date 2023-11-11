@@ -1,7 +1,6 @@
 package com.devkev.models;
 
 import com.devkev.server.Match.MatchLeaveReasons;
-import com.google.gson.Gson;
 
 public interface MatchEvents {
 	

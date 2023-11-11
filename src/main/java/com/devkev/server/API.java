@@ -26,6 +26,7 @@ import com.devkev.models.ResponseModels.JoinMatchResponse;
 import com.devkev.models.ResponseModels.RollDiceResponse;
 import com.devkev.models.ResponseModels.ServerInfoResponse;
 import com.devkev.server.Match.MatchLeaveReasons;
+import com.devkev.server.MatchOptions.GameMode;
 
 
 public class API extends Jooby {
@@ -341,8 +342,7 @@ public class API extends Jooby {
 		 * Required Parameters: 
 		 *  - clientID
 		 * Optional Parameters:
-		 *  - option_disableCoins: (boolean, true if set to any value or "true" or false, if set and explicitly set to false or left out)
-		 *  - option_gameMode: 1 or 2 (1 means, set stake at every round start, 2 means, increase the stake for every turn in one round)
+		 *  - option_gameMode: Gamemodes are defined at MatchOptions.GameMode default is 1
 		 *  - option_allowHints: (boolean) If the user is allowed to play by hints (coming soon)
 		 */
 		post("/api/match/create/", (ctx, rsp) -> {
@@ -372,27 +372,20 @@ public class API extends Jooby {
 				return;
 			}
 			
-			boolean coinsDisabled = ctx.param("option_disableCoins").isSet();
-			
-			if(ctx.param("option_disableCoins").isSet()) {
-				if(ctx.param("option_disableCoins").value().equals("false")) {
-					coinsDisabled = false;
-				}
-			}
+			GameMode mode = GameMode.of(ctx.param("option_gameMode").byteValue());
 			
 			//TODO check if the client has enough credits. Just use a generic value for now.
 			//Match options are passed with this endoint in the future
-			if(c.model.coins < Match.MINIMUM_STAKE && !coinsDisabled) {
+			if(c.model.coins < Match.MINIMUM_STAKE && mode != GameMode.EASY) {
 				rsp.send(new ErrorResponse("", ResponseCodes.NOT_ENOUGH_CREDITS_FOR_MATCH_CREATION, "You need at least 10 coins, to create this match. Either disable stake or get more coins!"));
 				return;
 			}
 			
 			MatchOptions options = new MatchOptions();
-			options.useStake = !coinsDisabled;
 			options.allowHints = true;
-			options.setStakeAtRoundStart = true;
+			options.gameMode = mode;
 			
-			logger.debug("Creating match with options:\nUse stake: " + options.useStake + "\nAllow hints: " + options.allowHints + "\nMode: " + options.setStakeAtRoundStart);
+			logger.debug("Creating match with options:\nAllow hints: " + options.allowHints + "\nMode: " + options.gameMode);
 			
 			Match m = Match.createMatch(c, options);
 			c.generateUniqueSessionID();
@@ -441,7 +434,7 @@ public class API extends Jooby {
 					return;
 				}
 				
-				if(client.model.coins < Match.MINIMUM_STAKE && match.getOptions().useStake) {
+				if(client.model.coins < Match.MINIMUM_STAKE && match.getOptions().gameMode != GameMode.EASY) {
 					rsp.send(new ErrorResponse("", ResponseCodes.NOT_ENOUGH_CREDITS_FOR_MATCH_JOIN, "You need at least the amount of the minimum stake coins for this match, you need more credits to join this match!"));
 					return;
 				}

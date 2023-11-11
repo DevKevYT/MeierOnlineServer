@@ -26,7 +26,7 @@ import com.devkev.models.MatchEvents.ReactionEvent;
 import com.devkev.models.MatchEvents.RoundCancelledEvent;
 import com.devkev.models.MatchEvents.RoundFinishEvent;
 import com.devkev.models.SentMatchEvent;
-import com.google.gson.Gson;
+import com.devkev.server.MatchOptions.GameMode;
 
 //This class handles match logic for all connected clients
 public class Match {
@@ -202,9 +202,9 @@ public class Match {
 		
 		logger.info("STARTING ROUND " + currentRound + " MATCH: " + matchID);
 		
-		if(options.useStake) {
+		if(options.gameMode == GameMode.STAKE_AT_ROUND_START) {
 			
-			logger.info("STAKE ENABLED IN OPTIONS");
+			logger.info("STAKE ENABLED IN OPTIONS WITH GAME MODE 1");
 			
 			//Draw all the client "currentStakes" from the members and update the database. Leaving the match in progress will automatically make
 			//The client los his stake.
@@ -223,9 +223,8 @@ public class Match {
 						
 						logger.error("Failed to update database entry at user " + c.model.displayName + ". Database and RAM data might be out of sync for other members, but will be corrected again later.");
 						
-						for(Client failover : members) {
+						for(Client failover : members) 
 							failover.model.coins += failover.currentStake;
-						}
 						
 						stakepot = 0;
 						throw e;
@@ -235,7 +234,6 @@ public class Match {
 			}
 			logger.info("Stake pot: " + stakepot + " The winner will get all!");
 		}
-		
 		
 		setTimeoutScedulerForCurrentTurn();
 	}
@@ -357,7 +355,7 @@ public class Match {
 		winner.model.matchWins++;
 		loser.model.matchLosses++;
 		
-		if(options.useStake) {
+		if(options.gameMode == GameMode.STAKE_AT_ROUND_START) {
 			//Grant the winner all his coins!
 			winner.model.coins += stakepot;
 			try {
