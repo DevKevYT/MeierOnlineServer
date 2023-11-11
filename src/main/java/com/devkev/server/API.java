@@ -341,7 +341,7 @@ public class API extends Jooby {
 		 * Required Parameters: 
 		 *  - clientID
 		 * Optional Parameters:
-		 *  - option_disableCoins: (boolean, true if set to any value or "true")
+		 *  - option_disableCoins: (boolean, true if set to any value or "true" or false, if set and explicitly set to false or left out)
 		 *  - option_gameMode: 1 or 2 (1 means, set stake at every round start, 2 means, increase the stake for every turn in one round)
 		 *  - option_allowHints: (boolean) If the user is allowed to play by hints (coming soon)
 		 */
@@ -372,19 +372,27 @@ public class API extends Jooby {
 				return;
 			}
 			
-			boolean stakeEnabled = !ctx.param("option_disableCoins").isSet();
+			boolean coinsDisabled = ctx.param("option_disableCoins").isSet();
+			
+			if(ctx.param("option_disableCoins").isSet()) {
+				if(ctx.param("option_disableCoins").value().equals("false")) {
+					coinsDisabled = false;
+				}
+			}
 			
 			//TODO check if the client has enough credits. Just use a generic value for now.
 			//Match options are passed with this endoint in the future
-			if(c.model.coins < Match.MINIMUM_STAKE && stakeEnabled) {
+			if(c.model.coins < Match.MINIMUM_STAKE && !coinsDisabled) {
 				rsp.send(new ErrorResponse("", ResponseCodes.NOT_ENOUGH_CREDITS_FOR_MATCH_CREATION, "You need at least 10 coins, to create this match. Either disable stake or get more coins!"));
 				return;
 			}
 			
 			MatchOptions options = new MatchOptions();
-			options.useStake = stakeEnabled;
+			options.useStake = !coinsDisabled;
 			options.allowHints = true;
 			options.setStakeAtRoundStart = true;
+			
+			logger.debug("Creating match with options:\nUse stake: " + options.useStake + "\nAllow hints: " + options.allowHints + "\nMode: " + options.setStakeAtRoundStart);
 			
 			Match m = Match.createMatch(c, options);
 			c.generateUniqueSessionID();
