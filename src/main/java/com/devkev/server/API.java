@@ -31,7 +31,7 @@ import com.devkev.server.MatchOptions.GameMode;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "Beta 1.0.8";
+	public static final String VERSION = "Beta 1.0.9";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
