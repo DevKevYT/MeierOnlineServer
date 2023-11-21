@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import com.devkev.models.ClientModel;
 import com.devkev.models.Response;
+import com.devkev.models.MatchEvents.CoinChangeEvent;
+import com.devkev.models.MatchEvents.CoinChangeMember;
 import com.devkev.models.MatchEvents.HostPromotion;
 import com.devkev.models.MatchEvents.JoinEvent;
 import com.devkev.models.MatchEvents.LeaveEvent;
@@ -190,6 +192,7 @@ public class Match {
 		
 		NewTurnEvent event = new NewTurnEvent(getMostrecentEventID());
 		event.currentLosses = currentTurn.model.matchLosses;
+		event.coins = currentTurn.model.coins;
 		event.currentWins = currentTurn.model.matchWins;
 		event.clientID = currentTurn.model.uuid;
 		event.displayName = currentTurn.model.displayName;
@@ -198,6 +201,7 @@ public class Match {
 		event.prevDisplayName = "";
 		event.prevLosses = 0;
 		event.prevWins = 0;
+		event.prevCoins = 0;
 		triggerEvent(event);
 		
 		logger.info("STARTING ROUND " + currentRound + " MATCH: " + matchID);
@@ -211,27 +215,40 @@ public class Match {
 			stakepot = 0;
 			
 			synchronized (members) {
+				ArrayList<CoinChangeMember> coinChanges = new ArrayList<CoinChangeMember>();
+				
 				for(Client c : members) {
-					stakepot += (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
-					c.model.coins -= (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
+					int change = (c.currentStake >= minimumStake ? c.currentStake : minimumStake);
+					stakepot += change;
+					c.model.coins -= change;
 					
-					
+					logger.info("Drawing " + (c.currentStake >= minimumStake ? c.currentStake : minimumStake) + " from " + c.model.displayName + " Coins left: " + c.model.coins);
 					//If an error occurs on one member, throw an exception and revert all changes to prevent coins getting lost
 					try {
 						c.model.updateModel();
-					} catch (SQLException e) {
 						
+						CoinChangeMember m = new CoinChangeMember();
+						m.change = change*-1;
+						m.model = c.model;
+						coinChanges.add(m);
+						
+					} catch (SQLException e) {
 						logger.error("Failed to update database entry at user " + c.model.displayName + ". Database and RAM data might be out of sync for other members, but will be corrected again later.");
 						
 						for(Client failover : members) 
 							failover.model.coins += failover.currentStake;
 						
 						stakepot = 0;
-						throw e;
+						throw new SQLException("Failed to draw coins for user " + c.model.displayName + " This is not your fault :( Please try again.");
 					}
-					logger.info("Drawing " + (c.currentStake >= minimumStake ? c.currentStake : minimumStake) + " from " + c.model.displayName + " Coins left: " + c.model.coins);
 				}
+				
+				//If everything was right, notify the client by sending the coin update
+				CoinChangeEvent coinChange = new CoinChangeEvent(getMostrecentEventID());
+				coinChange.members = coinChanges.toArray(new CoinChangeMember[coinChanges.size()]);
+				triggerEvent(coinChange);
 			}
+			
 			logger.info("Stake pot: " + stakepot + " The winner will get all!");
 		}
 		
@@ -286,6 +303,7 @@ public class Match {
 		event.prevClientID = currentTurn.model.uuid;
 		event.prevDisplayName = currentTurn.model.displayName;
 		event.streak = streak;
+		event.prevCoins = currentTurn.model.coins;
 		
 		currentTurn.alreadyRolled = false;
 		prevTurnClientID = currentTurn.model.uuid;
@@ -305,7 +323,7 @@ public class Match {
 		event.displayName = next.model.displayName;
 		event.toldDieAbsoluteValue = toldAbsoluteValue;
 		event.toldDieRoll = getRollValue(toldDieAbsoluteValue);
-		
+		event.coins = next.model.coins;
 		triggerEvent(event);
 		setTimeoutScedulerForCurrentTurn();
 	}
@@ -358,6 +376,20 @@ public class Match {
 		if(options.gameMode == GameMode.STAKE_AT_ROUND_START) {
 			//Grant the winner all his coins!
 			winner.model.coins += stakepot;
+			
+			//Notify everyone of the new coins
+			CoinChangeEvent event = new CoinChangeEvent(getMostrecentEventID());
+			ArrayList<CoinChangeMember> change = new ArrayList<CoinChangeMember>();
+			for(Client c : getMembers()) {
+				CoinChangeMember cm = new CoinChangeMember();
+				cm.model = c.model;
+				cm.change = 0;
+				if(c.model.uuid.equals(winner.model.uuid)) cm.change = stakepot;
+				change.add(cm);
+			}
+			event.members = change.toArray(new CoinChangeMember[change.size()]);
+			triggerEvent(event);
+			
 			try {
 				winner.model.updateModel();
 			} catch (SQLException e) {
@@ -440,10 +472,7 @@ public class Match {
 		event.clientID = client.model.uuid;
 		event.displayName = client.model.displayName;
 		event.currentTurnID = currentTurn.model.uuid;
-		
-		ArrayList<ClientModel> members = new ArrayList<>();
-		for(Client c : getMembers()) members.add(c.model);
-		event.currentMembers = members.toArray(new ClientModel[members.size()]);
+		event.currentMembers = getMemberListAsModelArray();
 		
 		triggerEvent(event);
 	}
@@ -506,7 +535,7 @@ public class Match {
 			triggerEvent(promo);
 		}
 		
-		//Breche die aktuelle Runde einfach ab
+		//Breche die aktuelle Runde einfach ab (TODO erstatte alle Münzen)
 		if(client.model.uuid.equals(currentTurn.model.uuid)) {
 			logger.info("The current turn left the match. Starting a new round");
 			
@@ -576,6 +605,12 @@ public class Match {
 				System.out.println("Missed event. We should handle a connection loss here!");
 			}
 		}
+	}
+	
+	private ClientModel[] getMemberListAsModelArray() {
+		ArrayList<ClientModel> members = new ArrayList<>();
+		for(Client c : getMembers()) members.add(c.model);
+		return members.toArray(new ClientModel[members.size()]);
 	}
 	
 	private static String createUniqueID() {

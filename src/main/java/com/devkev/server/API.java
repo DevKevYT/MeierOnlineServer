@@ -398,6 +398,7 @@ public class API extends Jooby {
 			res.matchID = m.getMatchID();
 			res.displayName = c.model.displayName;
 			res.sessionID = c.getSessionID();
+			res.coins = c.model.coins;
 			
 			rsp.send(new Response(res));
 		});
@@ -623,6 +624,11 @@ public class API extends Jooby {
 			RollDiceResponse res = new RollDiceResponse();
 			res.absolueValue = absoluteRoll;
 			res.dieValues = match.getRollValue(absoluteRoll);
+			
+			ArrayList<ClientModel> coll = new ArrayList<>();
+			for(Client members : match.getMembers()) 
+				coll.add(members.model);
+			res.joinedClients = coll.toArray(new ClientModel[coll.size()]);
 			
 			rsp.send(new Response(res)); //Just send a generic success response
 		});

@@ -71,11 +71,13 @@ public interface MatchEvents {
 		public int currentLosses;
 		public String clientID;
 		public String displayName;
+		public int coins;
 		
 		public int prevWins;
 		public int prevLosses;
 		public String prevClientID;
 		public String prevDisplayName;
+		public int prevCoins;
 		
 		public int streak;
 		
@@ -146,6 +148,26 @@ public interface MatchEvents {
 		public ReactionEvent(int eventID) {
 			super(eventID, "reaction");
 		}
+		
+	}
+	
+	//Send, when at least one player get a coin currency update to everyone
+	public class CoinChangeEvent extends MatchEvent {
+
+		public CoinChangeMember[] members;
+		
+		public CoinChangeEvent(int eventID) {
+			super(eventID, "coin-change");
+			super.scope = Scope.EVERYONE;
+		}
+		
+	}
+	
+	//Belongs to CoinChangeEvent
+	public class CoinChangeMember {
+		
+		public int change; //e.g. +10 or -10 or -2
+		public ClientModel model;
 		
 	}
 	

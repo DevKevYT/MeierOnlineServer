@@ -8,6 +8,7 @@ public interface ResponseModels {
 		public String matchID;
 		public String clientID;
 		public String displayName;
+		public int coins;
 		
 	}
 	
@@ -15,8 +16,9 @@ public interface ResponseModels {
 		
 		public ClientModel currentTurn;
 		public String sessionID;
-		public ClientModel[] joinedClients;
 		public String matchID;
+		
+		public ClientModel[] joinedClients;
 		
 	}
 	
@@ -24,6 +26,8 @@ public interface ResponseModels {
 		
 		public int dieValues;
 		public int absolueValue;
+		
+		public ClientModel[] joinedClients;
 		
 	}
 	
