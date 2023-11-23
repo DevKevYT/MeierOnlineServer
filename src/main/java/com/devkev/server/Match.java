@@ -424,6 +424,8 @@ public class Match {
 			} catch (SQLException e) {
 				logger.error("Failed to update winner database coins. RAM and DB out of sync but will be corrected later");
 			}
+			
+			stakepot = 0;
 		}
 		
 		RoundFinishEvent event = new RoundFinishEvent(getMostrecentEventID());
