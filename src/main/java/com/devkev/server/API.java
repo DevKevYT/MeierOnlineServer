@@ -31,7 +31,7 @@ import com.devkev.server.MatchOptions.GameMode;
 
 public class API extends Jooby {
 	
-	public static final String VERSION = "Beta 1.0.9";
+	public static final String VERSION = "Beta 1.0.10";
 	
 	ScheduledExecutorService deleteExpiredClients = Executors.newScheduledThreadPool(1);
 	
@@ -399,6 +399,7 @@ public class API extends Jooby {
 			res.displayName = c.model.displayName;
 			res.sessionID = c.getSessionID();
 			res.coins = c.model.coins;
+			res.matchOptions = m.getOptions();
 			
 			rsp.send(new Response(res));
 		});
@@ -449,6 +450,7 @@ public class API extends Jooby {
 				joinResponse.matchID = match.getMatchID();
 				joinResponse.sessionID = client.getSessionID();
 				joinResponse.currentTurn = match.getCurrentTurn().model;
+				joinResponse.matchOptions = match.getOptions();
 				
 				ArrayList<ClientModel> coll = new ArrayList<>();
 				for(Client c : match.getMembers()) 

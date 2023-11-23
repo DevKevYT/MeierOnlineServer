@@ -1,5 +1,7 @@
 package com.devkev.models;
 
+import com.devkev.server.MatchOptions;
+
 public interface ResponseModels {
 
 	public class CreateMatchResponse {
@@ -9,6 +11,7 @@ public interface ResponseModels {
 		public String clientID;
 		public String displayName;
 		public int coins;
+		public MatchOptions matchOptions;
 		
 	}
 	
@@ -17,6 +20,7 @@ public interface ResponseModels {
 		public ClientModel currentTurn;
 		public String sessionID;
 		public String matchID;
+		public MatchOptions matchOptions;
 		
 		public ClientModel[] joinedClients;
 		

@@ -292,6 +292,35 @@ public class Match {
 	
 	public void next(int toldDieAbsoluteValue) throws Exception {
 		
+		if(options.gameMode == GameMode.STAKE_INCREASE) {
+			//If the gamemode stake increase is set, draw 5 coins from everybody and put it into the stakepot
+			//If someone does not have enough coins, draw nothing but kick him once the round finishes! There's still hope to win :)
+			ArrayList<CoinChangeMember> coinChanges = new ArrayList<CoinChangeMember>();
+			
+			synchronized (members) {
+				for(Client c : getMembers()) {
+					int change =  (c.model.coins - 5 >= 0 ? 5 : c.model.coins);
+					stakepot += change;
+					c.model.coins -= change;
+					
+					logger.info("Drawing 5 from " + c.model.displayName + " Coins left: " + c.model.coins);
+					
+					//TODO save this operation to prevent coin loss
+					c.model.updateModel();
+					
+					CoinChangeMember m = new CoinChangeMember();
+					m.change = change*-1;
+					m.model = c.model;
+					coinChanges.add(m);
+				}
+			}
+			
+			//If everything was right, notify the client by sending the coin update
+			CoinChangeEvent coinChange = new CoinChangeEvent(getMostrecentEventID());
+			coinChange.members = coinChanges.toArray(new CoinChangeMember[coinChanges.size()]);
+			triggerEvent(coinChange);
+		}
+		
 		toldAbsoluteValue = toldDieAbsoluteValue;
 		
 		turnCounter++;
@@ -373,8 +402,8 @@ public class Match {
 		winner.model.matchWins++;
 		loser.model.matchLosses++;
 		
-		if(options.gameMode == GameMode.STAKE_AT_ROUND_START) {
-			//Grant the winner all his coins!
+		if(options.gameMode == GameMode.STAKE_AT_ROUND_START || options.gameMode == GameMode.STAKE_INCREASE) {
+			//Grant the winner all his coins from the stakepot!
 			winner.model.coins += stakepot;
 			
 			//Notify everyone of the new coins
