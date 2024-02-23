@@ -95,7 +95,7 @@ public class API extends Jooby {
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
-		}, 10, 10, TimeUnit.SECONDS);
+		}, 10, 60, TimeUnit.SECONDS);
 		
 	}
 	
